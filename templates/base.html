@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Peakform{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Peakform is a personalized fitness companion for nutrition tracking, calisthenics training, and daily habits.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="{% url 'core:landing' %}">
+        <span class="brand__mark" aria-hidden="true">P</span>
+        <span class="brand__name">Peakform</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="nav-toggle__bar"></span>
+        <span class="nav-toggle__bar"></span>
+        <span class="nav-toggle__bar"></span>
+      </button>
+
+      <nav id="primary-nav" class="site-nav" aria-label="Primary">
+        <a href="{% url 'core:landing' %}#features">Features</a>
+        <a href="{% url 'core:landing' %}#community">Community</a>
+        <a href="{% url 'core:landing' %}#about">About</a>
+      </nav>
+
+      <div class="site-header__actions">
+        <a class="btn btn--ghost" href="#">Sign in</a>
+        <a class="btn btn--primary" href="#">Get started</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    {% if messages %}
+      <div class="container">
+        <ul class="messages">
+          {% for message in messages %}
+            <li class="message message--{{ message.tags }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <span class="brand__mark" aria-hidden="true">P</span>
+        <span class="brand__name">Peakform</span>
+        <p>Your personalized fitness companion &mdash; nutrition, training, and community in one place.</p>
+      </div>
+
+      <div class="site-footer__links">
+        <div>
+          <h3>Platform</h3>
+          <a href="{% url 'core:landing' %}#features">Features</a>
+          <a href="{% url 'core:landing' %}#community">Community</a>
+        </div>
+        <div>
+          <h3>Account</h3>
+          <a href="#">Sign in</a>
+          <a href="#">Create account</a>
+        </div>
+        <div>
+          <h3>Legal</h3>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="container site-footer__bottom">
+      <p>&copy; {% now "Y" %} Peakform. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

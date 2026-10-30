@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Peakform &mdash; Your Personalized Fitness Companion{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero__inner">
+    <div class="hero__copy">
+      <span class="eyebrow">Nutrition &middot; Calisthenics &middot; Community</span>
+      <h1>Train smarter. Eat better. Stay consistent.</h1>
+      <p class="hero__lede">
+        Peakform is a personalized fitness companion &mdash; not just a workout
+        generator. Track your nutrition, follow guided calisthenics sessions
+        built around your goals, and stay accountable with a global community.
+      </p>
+      <div class="hero__actions">
+        <a class="btn btn--primary btn--lg" href="#">Get started free</a>
+        <a class="btn btn--ghost btn--lg" href="#features">See how it works</a>
+      </div>
+      <p class="hero__note">Built for complete beginners through advanced athletes.</p>
+    </div>
+
+    <div class="hero__preview card card--elevated" aria-hidden="true">
+      <div class="preview__header">
+        <span>Today</span>
+        <span class="preview__badge">Day 12 streak</span>
+      </div>
+      <div class="preview__ring">
+        <div class="preview__ring-value">1,840<small>/2,200 kcal</small></div>
+      </div>
+      <div class="preview__macros">
+        <div><span class="dot dot--protein"></span>Protein <strong>128g</strong></div>
+        <div><span class="dot dot--carbs"></span>Carbs <strong>190g</strong></div>
+        <div><span class="dot dot--fat"></span>Fat <strong>58g</strong></div>
+      </div>
+      <div class="preview__row">
+        <span>Water</span>
+        <div class="preview__bar"><span style="width: 65%"></span></div>
+      </div>
+      <div class="preview__row">
+        <span>Steps</span>
+        <div class="preview__bar"><span style="width: 80%"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="section">
+  <div class="container">
+    <div class="section__heading">
+      <h2>Everything you need, in one place</h2>
+      <p>No more juggling five different apps to train and eat well.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(255,90,60,0.12); color: var(--color-primary);">N</div>
+        <h3>Nutrition tracking</h3>
+        <p>BMI, BMR, TDEE, and personalized calorie and macro targets &mdash; with an editable food diary to match.</p>
+      </article>
+
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(15,157,120,0.12); color: var(--color-secondary);">AI</div>
+        <h3>AI-powered food logging</h3>
+        <p>Describe a meal in plain language and get structured nutrition estimates you can review and save.</p>
+      </article>
+
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(17,75,95,0.12); color: var(--color-accent);">W</div>
+        <h3>Calisthenics workout plans</h3>
+        <p>Plans built around your goals, experience, equipment, and schedule &mdash; with planned rest days.</p>
+      </article>
+
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(255,90,60,0.12); color: var(--color-primary);">G</div>
+        <h3>Guided workouts</h3>
+        <p>Warm-ups, technique cues, rest timers, and performance logging for every set of every session.</p>
+      </article>
+
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(15,157,120,0.12); color: var(--color-secondary);">H</div>
+        <h3>Hydration &amp; activity</h3>
+        <p>Water and step tracking against goals that adjust to you, not generic daily recommendations.</p>
+      </article>
+
+      <article class="card feature-card">
+        <div class="feature-card__icon" style="background: rgba(17,75,95,0.12); color: var(--color-accent);">C</div>
+        <h3>Global community</h3>
+        <p>Share meals, programs, and progress. Follow other athletes and learn from real experiences.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="community" class="section section--alt">
+  <div class="container section--split">
+    <div>
+      <h2>A community that trains together</h2>
+      <p>
+        Post your meals, recipes, training photos, and milestones. Follow
+        people on a similar journey, swap tips, and ask questions &mdash;
+        from complete beginners to advanced calisthenics athletes.
+      </p>
+      <a class="btn btn--secondary" href="#">Explore the community</a>
+    </div>
+    <div class="card">
+      <h3>Recent in the community</h3>
+      <ul class="mini-feed">
+        <li><strong>Mia R.</strong> hit a 30-second handstand hold for the first time. <span>2h ago</span></li>
+        <li><strong>Dev K.</strong> shared a high-protein post-workout bowl recipe. <span>5h ago</span></li>
+        <li><strong>Sam O.</strong> completed a 14-day training streak. <span>1d ago</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="section cta">
+  <div class="container cta__inner">
+    <h2>Ready to build a routine that actually sticks?</h2>
+    <p>Create a free account and get your personalized nutrition and training targets in minutes.</p>
+    <a class="btn btn--primary btn--lg" href="#">Create your free account</a>
+  </div>
+</section>
+{% endblock %}
