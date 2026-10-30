@@ -13,7 +13,7 @@
         built around your goals, and stay accountable with a global community.
       </p>
       <div class="hero__actions">
-        <a class="btn btn--primary btn--lg" href="#">Get started free</a>
+        <a class="btn btn--primary btn--lg" href="{% url 'accounts:register' %}">Get started free</a>
         <a class="btn btn--ghost btn--lg" href="#features">See how it works</a>
       </div>
       <p class="hero__note">Built for complete beginners through advanced athletes.</p>
@@ -100,7 +100,7 @@
         people on a similar journey, swap tips, and ask questions &mdash;
         from complete beginners to advanced calisthenics athletes.
       </p>
-      <a class="btn btn--secondary" href="#">Explore the community</a>
+      <a class="btn btn--secondary" href="{% url 'accounts:register' %}">Join Peakform</a>
     </div>
     <div class="card">
       <h3>Recent in the community</h3>
@@ -117,7 +117,7 @@
   <div class="container cta__inner">
     <h2>Ready to build a routine that actually sticks?</h2>
     <p>Create a free account and get your personalized nutrition and training targets in minutes.</p>
-    <a class="btn btn--primary btn--lg" href="#">Create your free account</a>
+    <a class="btn btn--primary btn--lg" href="{% url 'accounts:register' %}">Create your free account</a>
   </div>
 </section>
 {% endblock %}

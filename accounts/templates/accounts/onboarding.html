@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Set up your profile &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-8); text-align: left;">
+      <h1>Let's set up your profile</h1>
+      <p>This takes under a minute and helps us personalize your nutrition and training targets. You can edit it anytime.</p>
+    </div>
+
+    <form class="card form-card" method="post" novalidate>
+      {% include "accounts/_profile_form.html" with submit_label="Finish setup" %}
+    </form>
+  </div>
+</section>
+{% endblock %}

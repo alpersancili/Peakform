@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Your profile &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="profile-header">
+      <div>
+        <h1>{{ request.user.username }}</h1>
+        <p>{{ request.user.email }}</p>
+      </div>
+      <a class="btn btn--primary" href="{% url 'accounts:profile_edit' %}">Edit profile</a>
+    </div>
+
+    <div class="card profile-summary">
+      <dl class="summary-grid">
+        <div>
+          <dt>Age</dt>
+          <dd>{{ profile.age|default:"Not set" }}</dd>
+        </div>
+        <div>
+          <dt>Sex</dt>
+          <dd>{{ profile.get_sex_display }}</dd>
+        </div>
+        <div>
+          <dt>Height</dt>
+          <dd>{% if profile.height_cm %}{{ profile.height_cm|floatformat:1 }} cm{% else %}Not set{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Weight</dt>
+          <dd>{% if profile.weight_kg %}{{ profile.weight_kg|floatformat:1 }} kg{% else %}Not set{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Activity level</dt>
+          <dd>{{ profile.get_activity_level_display }}</dd>
+        </div>
+        <div>
+          <dt>Experience</dt>
+          <dd>{{ profile.get_experience_level_display }}</dd>
+        </div>
+        <div>
+          <dt>Primary goal</dt>
+          <dd>{{ profile.get_primary_goal_display }}</dd>
+        </div>
+        <div>
+          <dt>Training</dt>
+          <dd>{{ profile.training_days_per_week }} days/week, {{ profile.session_duration_minutes }} min</dd>
+        </div>
+        <div>
+          <dt>Country</dt>
+          <dd>{{ profile.country|default:"Not set" }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <form method="post" action="{% url 'accounts:logout' %}" class="profile-signout">
+      {% csrf_token %}
+      <button class="btn btn--ghost" type="submit">Sign out</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

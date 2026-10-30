@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Create your account &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+  <div class="container auth-page__inner">
+    <div class="card card--elevated auth-card">
+      <h1 class="auth-card__title">Create your free account</h1>
+      <p class="auth-card__subtitle">Start tracking nutrition and training in minutes.</p>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+
+        {% if form.non_field_errors %}
+          <div class="messages">
+            {% for error in form.non_field_errors %}
+              <li class="message message--error">{{ error }}</li>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <button class="btn btn--primary btn--block btn--lg" type="submit">Create account</button>
+      </form>
+
+      <p class="auth-card__footer">Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

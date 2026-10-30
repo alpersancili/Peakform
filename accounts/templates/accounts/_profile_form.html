@@ -1,0 +1,122 @@
+{% csrf_token %}
+
+{% if form.non_field_errors %}
+  <ul class="messages">
+    {% for error in form.non_field_errors %}
+      <li class="message message--error">{{ error }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<h2 class="form-section__title">About you</h2>
+<div class="form-grid">
+  <div class="field">
+    <label for="{{ form.date_of_birth.id_for_label }}">Date of birth</label>
+    {{ form.date_of_birth }}
+    {% for error in form.date_of_birth.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="field">
+    <label for="{{ form.sex.id_for_label }}">Sex</label>
+    {{ form.sex }}
+    <p class="field-help">Used only for BMR/calorie formulas.</p>
+  </div>
+  <div class="field">
+    <label for="{{ form.country.id_for_label }}">Country / region</label>
+    {{ form.country }}
+  </div>
+  <div class="field">
+    <label for="{{ form.preferred_units.id_for_label }}">Preferred units</label>
+    {{ form.preferred_units }}
+  </div>
+</div>
+
+<div class="form-grid" id="units-imperial">
+  <div class="field">
+    <label for="{{ form.height_ft.id_for_label }}">Height (ft)</label>
+    {{ form.height_ft }}
+    {% for error in form.height_ft.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="field">
+    <label for="{{ form.height_in.id_for_label }}">Height (in)</label>
+    {{ form.height_in }}
+  </div>
+  <div class="field">
+    <label for="{{ form.weight_lb.id_for_label }}">Weight (lb)</label>
+    {{ form.weight_lb }}
+    {% for error in form.weight_lb.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+</div>
+
+<div class="form-grid" id="units-metric">
+  <div class="field">
+    <label for="{{ form.height_cm_input.id_for_label }}">Height (cm)</label>
+    {{ form.height_cm_input }}
+    {% for error in form.height_cm_input.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="field">
+    <label for="{{ form.weight_kg_input.id_for_label }}">Weight (kg)</label>
+    {{ form.weight_kg_input }}
+    {% for error in form.weight_kg_input.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
+</div>
+
+<h2 class="form-section__title">Your goals</h2>
+<div class="form-grid">
+  <div class="field">
+    <label for="{{ form.activity_level.id_for_label }}">Activity level</label>
+    {{ form.activity_level }}
+  </div>
+  <div class="field">
+    <label for="{{ form.experience_level.id_for_label }}">Fitness experience</label>
+    {{ form.experience_level }}
+  </div>
+  <div class="field">
+    <label for="{{ form.primary_goal.id_for_label }}">Primary goal</label>
+    {{ form.primary_goal }}
+  </div>
+  <div class="field">
+    <label for="{{ form.training_days_per_week.id_for_label }}">Training days / week</label>
+    {{ form.training_days_per_week }}
+  </div>
+  <div class="field">
+    <label for="{{ form.session_duration_minutes.id_for_label }}">Minutes per session</label>
+    {{ form.session_duration_minutes }}
+  </div>
+</div>
+
+<h2 class="form-section__title">Equipment available</h2>
+<div class="field">
+  <ul class="checkbox-group">
+    {% for checkbox in form.equipment %}
+      <li>{{ checkbox }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<h2 class="form-section__title">Dietary preferences</h2>
+<div class="field">
+  <ul class="checkbox-group">
+    {% for checkbox in form.dietary_preferences %}
+      <li>{{ checkbox }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<button class="btn btn--primary btn--lg" type="submit">{{ submit_label }}</button>
+
+<script>
+  (function () {
+    const unitsSelect = document.getElementById("id_preferred_units");
+    const imperial = document.getElementById("units-imperial");
+    const metric = document.getElementById("units-metric");
+
+    function syncUnits() {
+      const isImperial = unitsSelect.value === "imperial";
+      imperial.style.display = isImperial ? "grid" : "none";
+      metric.style.display = isImperial ? "none" : "grid";
+    }
+
+    unitsSelect.addEventListener("change", syncUnits);
+    syncUnits();
+  })();
+</script>

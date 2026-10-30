@@ -382,3 +382,70 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
   .feature-grid { grid-template-columns: 1fr; }
   .section { padding: var(--space-16) 0; }
 }
+
+/* ===========================================================
+   Auth pages
+   =========================================================== */
+
+.auth-page { padding: var(--space-16) 0; }
+.auth-page__inner { display: flex; justify-content: center; }
+.auth-card { width: 100%; max-width: 420px; }
+.auth-card__title { margin-bottom: var(--space-2); }
+.auth-card__subtitle { margin-bottom: var(--space-6); }
+.auth-card__footer { margin: var(--space-6) 0 0; text-align: center; font-size: 0.9rem; }
+.auth-card__footer a { color: var(--color-primary); font-weight: 600; }
+.field-help { color: var(--color-body); font-size: 0.82rem; margin-top: var(--space-1); }
+
+/* ===========================================================
+   Profile / onboarding forms
+   =========================================================== */
+
+.form-page { max-width: 760px; }
+.form-card { padding: var(--space-8); }
+.form-section__title {
+  font-size: 1.05rem;
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+.form-card > .form-section__title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4) var(--space-6);
+}
+
+.checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2) var(--space-6);
+}
+.checkbox-group li { display: flex; align-items: center; }
+.checkbox-group label { display: flex; align-items: center; gap: var(--space-2); font-weight: 400; color: var(--color-ink); cursor: pointer; }
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--color-primary); }
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.profile-header p { margin: 0; }
+.profile-summary { margin-bottom: var(--space-6); }
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin: 0;
+}
+.summary-grid dt { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-body); margin-bottom: var(--space-1); }
+.summary-grid dd { margin: 0; font-weight: 600; }
+.profile-signout { margin: 0; }
+
+@media (max-width: 640px) {
+  .form-grid, .checkbox-group { grid-template-columns: 1fr; }
+  .summary-grid { grid-template-columns: 1fr 1fr; }
+  .profile-header { flex-direction: column; }
+}
