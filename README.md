@@ -8,30 +8,33 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 7 — Global community.** Django project scaffolded with
-environment-driven configuration, a responsive base template and design
-system, the landing page, authentication/onboarding/profiles, nutrition
-calculations with a food diary and water/step trackers and Gemini-powered
-natural-language food logging, a calisthenics workout planner with
-guided sessions and progressive overload, streaks/weekly goals/badges,
-and now a public community feed: text posts (with an optional photo)
-about meals, recipes, workout programs, training photos, skills, and
-progress; likes; one level of threaded comments/replies; following other
-users and a dedicated following feed; public profiles; editing and
-deleting your own content; and reporting posts or comments for spam,
-harassment, misleading content, or inappropriate images. Anyone can
-browse the feed and public profiles; posting, commenting, liking,
-following, and reporting require signing in. Authorization is enforced
-server-side (editing/deleting another user's content 404s rather than
-succeeding), uploaded images are restricted by file extension and a 5MB
-size cap, and moderators can hide reported content from the Django admin
-without deleting the underlying record. Polish and deployment land in
-the final phase per the brief's roadmap.
+**MVP complete (Phases 1–8).** Django project with environment-driven
+configuration, a responsive, accessible base template and design system
+(light/dark, keyboard-navigable, skip link), the landing page,
+authentication/onboarding/profiles, nutrition calculations (BMI/BMR/
+TDEE/macros) with a food diary and water/step trackers, Gemini-powered
+natural-language food logging with validated, editable estimates, a
+calisthenics workout planner with guided sessions and progressive
+overload, streaks/weekly goals/badges, a public community feed (posts,
+images, likes, threaded comments, following, profiles, reporting and
+admin moderation), and production deployment configuration (gunicorn,
+WhiteNoise static files, HTTPS/HSTS/secure-cookie hardening, console
+logging). 139 automated tests cover the deterministic calculation logic,
+generation algorithms, and server-side permission checks across every
+app.
 
 **Known content gap:** exercise demonstration videos are not yet
 populated (`Exercise.video_url` is left blank for all seeded exercises)
 rather than filled with guessed YouTube links — the UI supports an
 embedded video per exercise once real, verified URLs are curated.
+
+**Deferred to a future release** (per the brief's section 5 — not MVP
+scope): AI food photo recognition, calisthenics skill roadmaps, an
+advanced AI coach with weekly summaries, automated recovery analysis
+from logged sleep/soreness trends, and expanded gamification (weekly
+and community challenges). The architecture doesn't block adding these
+later — e.g. `RecoveryNote` already exists for the manual version that
+automated recovery analysis would build on.
 
 Seed reference data after migrating:
 
@@ -75,12 +78,16 @@ left unset.
 
 | Variable | Purpose |
 | --- | --- |
-| `DJANGO_SECRET_KEY` | Django's cryptographic signing key. Required in production. |
+| `DJANGO_SECRET_KEY` | Django's cryptographic signing key. Required in production — generate a long random value, e.g. `python -c "import secrets; print(secrets.token_urlsafe(50))"`. |
 | `DJANGO_DEBUG` | `True` locally, `False` in production. |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames Django will serve. |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated origins (with scheme) allowed to submit forms, e.g. your production domain. |
+| `DJANGO_SECURE_SSL_REDIRECT` | `True` in production to redirect HTTP to HTTPS (default `True`; the host's load balancer must forward `X-Forwarded-Proto`). |
+| `DJANGO_LOG_LEVEL` | Console log level in production (`INFO` by default; `DEBUG` for more verbose troubleshooting). |
 | `DATABASE_URL` | Postgres connection string (Supabase). Unset = local SQLite. |
-| `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. |
+| `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. Unset = the feature is disabled with a clear in-app message; nothing else breaks. |
+| `GEMINI_MODEL` | Gemini model id (default `gemini-2.0-flash`). |
+| `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
 
 ## Running tests
 
@@ -88,14 +95,55 @@ left unset.
 python manage.py test
 ```
 
+139 tests cover the deterministic nutrition/workout-generation/streak
+calculations (no AI involved — these are pure functions with their own
+unit tests), form validation, and — for every view that lets a user
+modify data — that another user genuinely cannot (edit/delete/moderate
+endpoints return 404 rather than succeeding for a non-owner). The
+Gemini API is never called in tests; `nutrition/ai_client.py`'s HTTP
+call is mocked.
+
 ## Deployment
 
 Django does not fit Vercel's serverless model well (no persistent
 processes, and static/media handling requires extra configuration). This
-project targets a standard Django host instead (e.g. Railway or Render),
-which supports a long-running WSGI process, straightforward Postgres
-provisioning, and simple environment variable management. Deployment
-configuration is finalized in Phase 8 of the roadmap.
+project targets a standard Django host instead — **Railway** or
+**Render** both work well (a long-running WSGI process, managed Postgres
+if you don't use Supabase directly, and simple environment variable
+management).
+
+1. **Database:** create a Supabase Postgres project (or use the host's
+   managed Postgres) and copy its connection string into `DATABASE_URL`.
+2. **Set environment variables** on the host: at minimum
+   `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=False`, `DJANGO_ALLOWED_HOSTS`
+   (your domain), `DJANGO_CSRF_TRUSTED_ORIGINS` (`https://yourdomain...`),
+   and `DATABASE_URL`. Add `GEMINI_API_KEY` to enable the AI assistant.
+3. **Build:** `pip install -r requirements.txt`.
+4. **Static files:** run `python manage.py collectstatic --noinput`
+   during the build step (WhiteNoise then serves hashed, cached assets
+   directly from the Django process — no separate static host needed).
+5. **Release/start command:** the included [`Procfile`](Procfile) runs
+   migrations and starts gunicorn: `python manage.py migrate --noinput
+   && gunicorn peakform.wsgi --log-file -`. Railway and Render both read
+   a `Procfile` automatically; for Render specifically, set the build
+   command to `pip install -r requirements.txt && python manage.py
+   collectstatic --noinput` and the start command to `gunicorn
+   peakform.wsgi --log-file -` (Render runs migrations as a separate
+   step rather than via the Procfile).
+6. **Media storage:** user-uploaded community post images are written to
+   local disk (`MEDIA_ROOT`) by default, which works but isn't
+   persistent across redeploys on most platform-as-a-service hosts.
+   For a production deployment, point Django at object storage (e.g.
+   Supabase Storage or S3-compatible storage via `django-storages`)
+   instead — the codebase doesn't hardcode local storage anywhere that
+   would block this.
+7. Seed reference data once, after the first deploy:
+   `python manage.py seed_foods && python manage.py seed_exercises &&
+   python manage.py seed_badges` (idempotent — safe to re-run).
+
+Run `python manage.py check --deploy` with your production environment
+variables set before going live; it flags missing production hardening
+(e.g. a weak `SECRET_KEY`).
 
 ## Project structure
 

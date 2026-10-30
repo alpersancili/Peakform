@@ -8,7 +8,7 @@
   <p class="post-card__body"><a class="post-card__body-link" href="{% url 'community:post_detail' post.id %}">{{ post.body|linebreaksbr }}</a></p>
 
   {% if post.image %}
-    <img class="post-card__image" src="{{ post.image.url }}" alt="">
+    <img class="post-card__image" src="{{ post.image.url }}" alt="Photo attached to {{ post.author.username }}'s post">
   {% endif %}
 
   <div class="post-card__actions">

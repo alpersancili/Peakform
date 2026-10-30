@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Privacy &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Privacy</h1>
+      <p>A plain-language summary of what Peakform collects and why.</p>
+    </div>
+
+    <div class="card form-card">
+      <h3>What we collect</h3>
+      <p>
+        Your account email and password (stored using Django's standard
+        password hashing &mdash; we never see or store it in plain text),
+        and the profile details you choose to enter: age, height, weight,
+        sex (only when your chosen calorie formula requires it), activity
+        level, experience level, goals, available equipment, dietary
+        preferences, and units. These power your personalized nutrition
+        and workout targets, and you can edit or leave most of them blank.
+      </p>
+
+      <h3>What you log</h3>
+      <p>
+        Food diary entries, water and step logs, workout sessions and
+        exercise logs, recovery notes, and anything you choose to post to
+        the community feed (including photos you upload) are stored so you
+        can track progress over time. Community posts, comments, and your
+        username are visible to other users and, for the public feed, to
+        visitors who are not signed in.
+      </p>
+
+      <h3>AI assistant</h3>
+      <p>
+        If you use natural-language food logging, the text you type is
+        sent to Google's Gemini API to estimate nutrition values. Nothing
+        is logged to your diary automatically &mdash; you review and
+        confirm each estimate first.
+      </p>
+
+      <h3>What we don't do</h3>
+      <p>
+        We don't sell your data, and we don't share it with third parties
+        beyond the service providers needed to run the app (hosting,
+        database, and the Gemini API when you use the AI assistant).
+      </p>
+
+      <h3>Your controls</h3>
+      <p>
+        You can edit your profile at any time, delete your own posts and
+        comments, and unfollow anyone you follow. Contact your site
+        administrator to request deletion of your account.
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}

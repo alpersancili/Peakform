@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -6,6 +8,7 @@ from django.core.paginator import Paginator
 from django.db.models import Exists, OuterRef
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import CommentForm, PostForm, ReportForm
@@ -14,6 +17,18 @@ from .models import Comment, Follow, Like, Post, Report
 POSTS_PER_PAGE = 10
 
 REPORTABLE_MODELS = {"post": Post, "comment": Comment}
+
+# Lightweight abuse guards. Not a substitute for the AI assistant's
+# dedicated rate limiter (nutrition.ai_rate_limit) - these just stop a
+# script from flooding the feed, comments, or the report queue.
+POST_COOLDOWN_SECONDS = 30
+COMMENT_COOLDOWN_SECONDS = 10
+REPORT_DAILY_LIMIT = 20
+
+
+def _too_soon(queryset, cooldown_seconds):
+    cutoff = timezone.now() - timedelta(seconds=cooldown_seconds)
+    return queryset.filter(created_at__gte=cutoff).exists()
 
 
 def _visible_posts(viewer):
@@ -34,6 +49,10 @@ def feed(request):
     if request.method == "POST":
         if not request.user.is_authenticated:
             return redirect("accounts:login")
+        if _too_soon(Post.objects.filter(author=request.user), POST_COOLDOWN_SECONDS):
+            messages.error(request, "You're posting too quickly. Please wait a moment and try again.")
+            return redirect("community:feed")
+
         form = PostForm(request.POST, request.FILES)
         if form.is_valid():
             post = form.save(commit=False)
@@ -69,6 +88,9 @@ def post_detail(request, post_id):
     if request.method == "POST":
         if not request.user.is_authenticated:
             return redirect("accounts:login")
+        if _too_soon(Comment.objects.filter(author=request.user), COMMENT_COOLDOWN_SECONDS):
+            messages.error(request, "You're commenting too quickly. Please wait a moment and try again.")
+            return redirect("community:post_detail", post_id=post.id)
         form = CommentForm(request.POST)
         if form.is_valid():
             parent_id = request.POST.get("parent_id")
@@ -200,6 +222,13 @@ def report_create(request, kind, object_id):
     )
 
     if request.method == "POST":
+        recent_reports = Report.objects.filter(
+            reporter=request.user, created_at__gte=timezone.now() - timedelta(days=1)
+        )
+        if recent_reports.count() >= REPORT_DAILY_LIMIT:
+            messages.error(request, "You've reached today's report limit. Please try again tomorrow.")
+            return redirect(redirect_to)
+
         form = ReportForm(request.POST)
         if form.is_valid():
             report = form.save(commit=False)

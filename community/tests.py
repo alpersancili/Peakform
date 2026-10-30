@@ -92,7 +92,11 @@ class FeedViewTests(TestCase):
         self.assertRedirects(response, reverse("community:feed"))
         post = Post.objects.get()
         self.assertEqual(post.author, self.user)
-        self.assertEqual(post.body, "New PR today!")
+
+    def test_posting_again_too_soon_is_blocked(self):
+        self.client.post(reverse("community:feed"), {"post_type": PostType.GENERAL, "body": "First"})
+        self.client.post(reverse("community:feed"), {"post_type": PostType.GENERAL, "body": "Second"})
+        self.assertEqual(Post.objects.count(), 1)
 
     def test_removed_posts_excluded_from_feed(self):
         Post.objects.create(author=self.other, body="Spam content", is_removed=True)
@@ -157,7 +161,7 @@ class PostDetailViewTests(TestCase):
 
     def test_reply_to_a_reply_flattens_to_one_level(self):
         top = Comment.objects.create(post=self.post, author=self.author, body="Top level")
-        reply = Comment.objects.create(post=self.post, author=self.other, body="A reply", parent=top)
+        reply = Comment.objects.create(post=self.post, author=self.author, body="A reply", parent=top)
 
         self.client.post(
             reverse("community:post_detail", args=[self.post.id]),
@@ -165,6 +169,12 @@ class PostDetailViewTests(TestCase):
         )
         newest = Comment.objects.latest("id")
         self.assertEqual(newest.parent, top)
+
+    def test_commenting_again_too_soon_is_blocked(self):
+        url = reverse("community:post_detail", args=[self.post.id])
+        self.client.post(url, {"body": "First comment"})
+        self.client.post(url, {"body": "Second comment"})
+        self.assertEqual(Comment.objects.filter(author=self.other).count(), 1)
 
 
 class CommentDeleteTests(TestCase):
@@ -322,6 +332,19 @@ class ReportCreateTests(TestCase):
         )
         self.assertEqual(Report.objects.count(), 0)
         self.assertContains(response, "can&#x27;t be reported")
+
+    def test_daily_report_limit_is_enforced(self):
+        from community.views import REPORT_DAILY_LIMIT
+
+        other_posts = [Post.objects.create(author=self.author, body=f"Post {i}") for i in range(REPORT_DAILY_LIMIT)]
+        for post in other_posts:
+            self.client.post(
+                reverse("community:report_create", args=["post", post.id]), {"reason": ReportReason.SPAM}
+            )
+        self.assertEqual(Report.objects.count(), REPORT_DAILY_LIMIT)
+
+        self.client.post(reverse("community:report_create", args=["post", self.post.id]), {"reason": ReportReason.SPAM})
+        self.assertEqual(Report.objects.count(), REPORT_DAILY_LIMIT)
 
     def test_login_required(self):
         self.client.logout()

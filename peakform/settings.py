@@ -172,3 +172,23 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # By default Django only reports unhandled errors via email (which
+    # requires ADMINS/email backend configuration we don't have). Send
+    # warnings and above to the console instead, so they land in the
+    # hosting platform's log stream (e.g. Railway/Render logs).
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "console": {"class": "logging.StreamHandler"},
+        },
+        "root": {"handlers": ["console"], "level": "INFO"},
+        "loggers": {
+            "django": {
+                "handlers": ["console"],
+                "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+                "propagate": False,
+            },
+        },
+    }
