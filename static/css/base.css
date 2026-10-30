@@ -570,3 +570,73 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
   .dashboard__header { flex-direction: column; align-items: flex-start; }
   .food-result { flex-direction: column; align-items: flex-start; }
 }
+
+/* ===========================================================
+   Workouts
+   =========================================================== */
+
+.plan-week { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+.plan-day { display: flex; flex-direction: column; }
+.plan-day--today { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+.plan-day--rest { opacity: 0.75; }
+.plan-day__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
+.plan-day__header h3 { margin: 0; }
+.plan-day__badge { background: var(--color-primary); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; text-transform: uppercase; }
+.plan-day__rest { font-size: 0.9rem; margin: 0; }
+.plan-day__exercises { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); flex: 1; }
+.plan-day__exercises li { display: flex; justify-content: space-between; font-size: 0.85rem; gap: var(--space-2); }
+.plan-day__exercises li span { color: var(--color-body); white-space: nowrap; }
+
+.workout-exercise { margin-bottom: var(--space-4); }
+.workout-exercise--done { border-color: var(--color-secondary); }
+.workout-exercise__header h3 { margin: var(--space-1) 0; }
+.exercise-category {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-border);
+  color: var(--color-ink-soft);
+}
+
+.video-embed { position: relative; width: 100%; padding-top: 56.25%; margin: var(--space-4) 0; border-radius: var(--radius-sm); overflow: hidden; background: #000; }
+.video-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.exercise-details { margin: var(--space-3) 0; font-size: 0.9rem; }
+.exercise-details summary { cursor: pointer; font-weight: 600; color: var(--color-ink); }
+.exercise-details p { margin: var(--space-2) 0 0; }
+
+.set-log { font-size: 0.85rem; color: var(--color-body); margin: var(--space-3) 0; }
+.set-log li { padding: var(--space-1) 0; }
+
+.rest-timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.rest-timer__display { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; min-width: 3ch; }
+.rest-timer--done .rest-timer__display { color: var(--color-secondary); }
+
+.set-log-form__fields { display: flex; gap: var(--space-4); margin-bottom: var(--space-3); flex-wrap: wrap; }
+.set-log-form__fields label { font-size: 0.85rem; color: var(--color-body); display: flex; flex-direction: column; gap: var(--space-1); }
+.set-log-form__fields input {
+  width: 90px;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  min-height: 40px;
+}
+
+.history-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.history-item { display: flex; justify-content: space-between; align-items: center; }
+.history-item h3 { margin: 0 0 var(--space-1); font-size: 1rem; }

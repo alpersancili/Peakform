@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Log recovery &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>How are you recovering?</h1>
+      <p>Optional &mdash; this helps inform your training, not a medical assessment.</p>
+    </div>
+
+    <form class="card form-card" method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.sleep_quality.id_for_label }}">Sleep quality (1-5)</label>
+          {{ form.sleep_quality }}
+        </div>
+        <div class="field">
+          <label for="{{ form.soreness.id_for_label }}">Soreness (1-5)</label>
+          {{ form.soreness }}
+        </div>
+        <div class="field">
+          <label for="{{ form.fatigue.id_for_label }}">Fatigue (1-5)</label>
+          {{ form.fatigue }}
+        </div>
+      </div>
+      <div class="field">
+        <label for="{{ form.notes.id_for_label }}">Notes</label>
+        {{ form.notes }}
+      </div>
+      <button class="btn btn--primary btn--lg" type="submit">Save</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

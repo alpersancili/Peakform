@@ -38,6 +38,7 @@
       <div class="site-header__actions">
         {% if request.user.is_authenticated %}
           <a class="btn btn--ghost" href="{% url 'accounts:profile' %}">My profile</a>
+          <a class="btn btn--ghost" href="{% url 'workouts:plan_overview' %}">Workouts</a>
           <a class="btn btn--primary" href="{% url 'nutrition:dashboard' %}">Dashboard</a>
         {% else %}
           <a class="btn btn--ghost" href="{% url 'accounts:login' %}">Sign in</a>

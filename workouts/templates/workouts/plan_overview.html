@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Your workout plan &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="dashboard__header">
+      <div>
+        <h1>Your workout plan</h1>
+        {% if plan %}
+          <p>{{ plan.get_goal_display }} &middot; {{ plan.get_experience_level_display }} &middot; {{ plan.training_days_per_week }} days/week</p>
+        {% else %}
+          <p>No active plan yet.</p>
+        {% endif %}
+      </div>
+      <div class="profile-header__actions">
+        <a class="btn btn--ghost" href="{% url 'workouts:recovery_note_add' %}">Log recovery</a>
+        <a class="btn btn--ghost" href="{% url 'workouts:session_history' %}">History</a>
+        <a class="btn btn--primary" href="{% url 'workouts:plan_generate' %}">{% if plan %}Regenerate plan{% else %}Generate a plan{% endif %}</a>
+      </div>
+    </div>
+
+    {% if plan %}
+      <div class="plan-week">
+        {% for day in plan.days.all %}
+          <div class="card plan-day {% if day.day_index == today_index %}plan-day--today{% endif %} {% if day.is_rest_day %}plan-day--rest{% endif %}">
+            <div class="plan-day__header">
+              <h3>{{ day.label }}</h3>
+              {% if day.day_index == today_index %}<span class="plan-day__badge">Today</span>{% endif %}
+            </div>
+
+            {% if day.is_rest_day %}
+              <p class="plan-day__rest">Rest day. Recovery is part of the plan.</p>
+            {% else %}
+              <ul class="plan-day__exercises">
+                {% for pe in day.exercises.all %}
+                  <li>{{ pe.exercise.name }} <span>{{ pe.target_display }}</span></li>
+                {% endfor %}
+              </ul>
+              <p class="dashboard-card__note">~{{ day.estimated_minutes }} min</p>
+              <form method="post" action="{% url 'workouts:session_start' day.id %}">
+                {% csrf_token %}
+                <button class="btn btn--secondary btn--block" type="submit">Start workout</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card dashboard__prompt">
+        <p>Generate a personalized calisthenics plan based on your goals and experience.</p>
+        <a class="btn btn--primary" href="{% url 'workouts:plan_generate' %}">Generate a plan</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

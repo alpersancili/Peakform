@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Training history &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Training history</h1>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    {% if sessions %}
+      <ul class="history-list">
+        {% for session in sessions %}
+          <li class="card history-item">
+            <div>
+              <h3>{{ session.plan_day.label|default:"Workout" }}</h3>
+              <p class="dashboard-card__note">{{ session.date }} &middot; {{ session.get_status_display }}</p>
+            </div>
+            {% if session.status == "in_progress" %}
+              <a class="btn btn--secondary" href="{% url 'workouts:session_detail' session.id %}">Resume</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">No workouts logged yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

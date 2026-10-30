@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ session.plan_day.label|default:"Workout" }} &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>{{ session.plan_day.label|default:"Workout" }}</h1>
+      <p>{{ session.date }} &middot; {{ session.get_status_display }}</p>
+    </div>
+
+    {% for row in exercise_rows %}
+      {% with pe=row.plan_exercise ex=row.plan_exercise.exercise logs=row.logs %}
+      <div class="card workout-exercise {% if logs|length >= pe.target_sets %}workout-exercise--done{% endif %}">
+        <div class="workout-exercise__header">
+          <div>
+            <span class="exercise-category exercise-category--{{ ex.category }}">{{ ex.get_category_display }}</span>
+            <h3>{{ ex.name }}</h3>
+            <p class="dashboard-card__note">{{ pe.target_display }} &middot; rest {{ pe.rest_seconds }}s {% if ex.target_muscles %}&middot; {{ ex.target_muscles }}{% endif %}</p>
+          </div>
+        </div>
+
+        {% if ex.video_url %}
+          <div class="video-embed"><iframe src="{{ ex.video_url }}" title="{{ ex.name }} demonstration" allowfullscreen></iframe></div>
+        {% endif %}
+
+        <details class="exercise-details">
+          <summary>Technique &amp; guidance</summary>
+          <p><strong>Instructions:</strong> {{ ex.instructions }}</p>
+          {% if ex.breathing_guidance %}<p><strong>Breathing:</strong> {{ ex.breathing_guidance }}</p>{% endif %}
+          {% if ex.common_mistakes %}<p><strong>Avoid:</strong> {{ ex.common_mistakes }}</p>{% endif %}
+          {% if ex.easier_variation or ex.harder_variation %}
+            <p>
+              {% if ex.easier_variation %}<strong>Easier:</strong> {{ ex.easier_variation.name }} &nbsp;{% endif %}
+              {% if ex.harder_variation %}<strong>Harder:</strong> {{ ex.harder_variation.name }}{% endif %}
+            </p>
+          {% endif %}
+        </details>
+
+        {% if logs %}
+          <ul class="set-log">
+            {% for log in logs %}
+              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; RPE {{ log.effort_rpe }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        <div class="rest-timer" data-rest-timer data-seconds="{{ pe.rest_seconds }}">
+          <span class="rest-timer__display" data-rest-display>{{ pe.rest_seconds }}</span>
+          <button class="btn btn--ghost" type="button" data-rest-start>Start rest</button>
+        </div>
+
+        <form method="post" action="{% url 'workouts:log_set' session.id ex.id %}" class="set-log-form">
+          {% csrf_token %}
+          <div class="set-log-form__fields">
+            {% if ex.movement_type == "hold" %}
+              <label>Hold (s) {{ set_form.hold_seconds }}</label>
+            {% else %}
+              <label>Reps {{ set_form.reps }}</label>
+            {% endif %}
+            <label>RPE {{ set_form.effort_rpe }}</label>
+          </div>
+          <button class="btn btn--secondary" type="submit">Log set {{ logs|length|add:1 }}</button>
+        </form>
+      </div>
+      {% endwith %}
+    {% endfor %}
+
+    {% if session.status == "in_progress" %}
+      <form method="post" action="{% url 'workouts:session_complete' session.id %}" class="card form-card">
+        {% csrf_token %}
+        <label for="id_notes">How did it feel? (optional)</label>
+        <textarea id="id_notes" name="notes" rows="3" placeholder="Notes about this session..."></textarea>
+        <button class="btn btn--primary btn--lg" type="submit">Complete workout</button>
+      </form>
+    {% else %}
+      <p class="empty-state">This workout is complete.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

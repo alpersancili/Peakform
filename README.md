@@ -8,18 +8,26 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 3 — Nutrition core and daily dashboard.** Django project scaffolded
-with environment-driven configuration, a responsive base template and design
-system, the landing page, authentication/onboarding/profiles, and now BMI,
-BMR, TDEE, and macro calculations with a food diary, water/step trackers,
-and a daily dashboard with a weekly calories chart. Workouts, habits,
-AI assistance, and community features land in later phases per the
-brief's roadmap.
+**Phase 4 — Workout planning and guided sessions.** Django project
+scaffolded with environment-driven configuration, a responsive base
+template and design system, the landing page, authentication/onboarding/
+profiles, nutrition calculations with a food diary and water/step
+trackers, and now a calisthenics workout planner: deterministic plan
+generation (not AI) with planned rest days, a guided session view with
+a client-side rest timer and per-set logging, and rule-based progressive
+overload. Habits/streaks, AI assistance, and community features land in
+later phases per the brief's roadmap.
 
-Seed the shared food catalog after migrating:
+**Known content gap:** exercise demonstration videos are not yet
+populated (`Exercise.video_url` is left blank for all seeded exercises)
+rather than filled with guessed YouTube links — the UI supports an
+embedded video per exercise once real, verified URLs are curated.
+
+Seed reference data after migrating:
 
 ```bash
 python manage.py seed_foods
+python manage.py seed_exercises
 ```
 
 ## Tech stack

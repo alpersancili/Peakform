@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Generate a workout plan &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Generate your workout plan</h1>
+      <p>We'll build a 7-day schedule with planned rest days based on your goal, experience, equipment, and availability. These are pre-filled from your profile &mdash; adjust anything below.</p>
+    </div>
+
+    <form class="card form-card" method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.goal.id_for_label }}">Primary goal</label>
+          {{ form.goal }}
+        </div>
+        <div class="field">
+          <label for="{{ form.experience_level.id_for_label }}">Experience</label>
+          {{ form.experience_level }}
+        </div>
+        <div class="field">
+          <label for="{{ form.training_days_per_week.id_for_label }}">Training days / week</label>
+          {{ form.training_days_per_week }}
+          <p class="field-help">Capped at 6 &mdash; at least one rest day is always scheduled.</p>
+        </div>
+        <div class="field">
+          <label for="{{ form.session_duration_minutes.id_for_label }}">Minutes per session</label>
+          {{ form.session_duration_minutes }}
+        </div>
+      </div>
+
+      <h2 class="form-section__title">Equipment available</h2>
+      <div class="field">
+        <ul class="checkbox-group">
+          {% for checkbox in form.equipment %}
+            <li>{{ checkbox }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <button class="btn btn--primary btn--lg" type="submit">Generate plan</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
