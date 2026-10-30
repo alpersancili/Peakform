@@ -1,6 +1,7 @@
 from datetime import timedelta
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
@@ -11,11 +12,14 @@ from django.utils import timezone
 from motivation.badges import evaluate_badges
 from motivation.streaks import calculate_current_streak
 
+from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description
+from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import calculate_bmi, calculate_daily_targets
 from .forms import CustomFoodForm, MealEntryForm, StepLogForm, WaterQuickAddForm
 from .models import Food, MealCategory, MealEntry, StepLog, WaterLog
 
 WEEKLY_CHART_DAYS = 7
+AI_SESSION_KEY = "ai_pending_food_items"
 
 
 @login_required
@@ -192,3 +196,115 @@ def step_set(request):
             form.save()
             messages.success(request, "Steps updated.")
     return redirect("nutrition:dashboard")
+
+
+@login_required
+def ai_food_log(request):
+    configured = bool(settings.GEMINI_API_KEY)
+
+    if request.method == "POST":
+        if not configured:
+            messages.error(request, "The AI assistant isn't configured on this server yet.")
+            return redirect("nutrition:ai_food_log")
+
+        description = request.POST.get("description", "").strip()
+        if not description:
+            messages.error(request, "Describe what you ate first.")
+            return redirect("nutrition:ai_food_log")
+
+        try:
+            record_attempt_or_raise(request.user)
+        except RateLimitExceeded as exc:
+            minutes = max(1, int(exc.retry_after.total_seconds() // 60))
+            messages.error(request, f"You've hit today's AI assistant limit. Try again in about {minutes} minutes.")
+            return redirect("nutrition:ai_food_log")
+
+        try:
+            items = parse_food_description(description)
+        except GeminiConfigurationError:
+            messages.error(request, "The AI assistant isn't configured on this server yet.")
+            return redirect("nutrition:ai_food_log")
+        except GeminiError as exc:
+            messages.error(request, str(exc))
+            return redirect("nutrition:ai_food_log")
+
+        if not items:
+            messages.error(request, "Couldn't find any food in that description. Try rephrasing it.")
+            return redirect("nutrition:ai_food_log")
+
+        request.session[AI_SESSION_KEY] = [
+            {
+                "name": item.name,
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "meal_category": item.meal_category,
+                "calories": item.calories,
+                "protein_g": item.protein_g,
+                "carbs_g": item.carbs_g,
+                "fat_g": item.fat_g,
+            }
+            for item in items
+        ]
+        return redirect("nutrition:ai_food_log_review")
+
+    return render(
+        request,
+        "nutrition/ai_food_log.html",
+        {"configured": configured, "remaining_today": requests_remaining_today(request.user)},
+    )
+
+
+@login_required
+def ai_food_log_review(request):
+    pending_items = request.session.get(AI_SESSION_KEY)
+    if not pending_items:
+        messages.error(request, "That AI suggestion has expired. Describe your food again.")
+        return redirect("nutrition:ai_food_log")
+
+    if request.method == "POST":
+        logged_count = 0
+        for index, item in enumerate(pending_items):
+            if not request.POST.get(f"include_{index}"):
+                continue
+
+            meal_category = request.POST.get(f"meal_category_{index}", item["meal_category"])
+            if meal_category not in {choice for choice, _ in MealCategory.choices}:
+                meal_category = item["meal_category"]
+
+            try:
+                multiplier = float(request.POST.get(f"multiplier_{index}", "1"))
+            except ValueError:
+                multiplier = 1.0
+            if multiplier <= 0 or multiplier > 20:
+                multiplier = 1.0
+
+            food = Food.objects.create(
+                name=item["name"],
+                serving_size=item["quantity"],
+                serving_unit=item["unit"],
+                calories=item["calories"],
+                protein_g=item["protein_g"],
+                carbs_g=item["carbs_g"],
+                fat_g=item["fat_g"],
+                created_by=request.user,
+            )
+            MealEntry.objects.create(
+                user=request.user, food=food, meal_category=meal_category, quantity=multiplier
+            )
+            logged_count += 1
+
+        del request.session[AI_SESSION_KEY]
+
+        if logged_count:
+            messages.success(request, f"Logged {logged_count} item{'s' if logged_count != 1 else ''} from AI.")
+            for badge in evaluate_badges(request.user):
+                messages.success(request, f"New badge: {badge.name}!")
+        else:
+            messages.info(request, "Nothing was logged.")
+        return redirect("nutrition:dashboard")
+
+    rows = [
+        {"index": index, "item": item, "meal_categories": MealCategory.choices}
+        for index, item in enumerate(pending_items)
+    ]
+    return render(request, "nutrition/ai_food_log_review.html", {"rows": rows})

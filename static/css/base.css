@@ -469,6 +469,7 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
 }
 .dashboard__header h1 { margin-bottom: var(--space-1); }
 .dashboard__header p { margin: 0; }
+.dashboard__header-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
 .dashboard__prompt {
   display: flex;

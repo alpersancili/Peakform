@@ -95,6 +95,21 @@ class WaterLog(models.Model):
         return f"{self.user}: {self.amount_ml}ml"
 
 
+class AIFoodLogRequest(models.Model):
+    """One attempted call to the AI food-logging assistant, for rate limiting.
+
+    Recorded before the Gemini call is made (not just on success) so a
+    user cannot bypass the daily limit by sending descriptions designed
+    to fail validation.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_food_log_requests")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class StepLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="step_logs")
     date = models.DateField(default=timezone.localdate)

@@ -8,16 +8,23 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 5 — Habits and motivation.** Django project scaffolded with
-environment-driven configuration, a responsive base template and design
-system, the landing page, authentication/onboarding/profiles, nutrition
-calculations with a food diary and water/step trackers, a calisthenics
-workout planner with guided sessions and progressive overload, and now
-streaks, weekly goals, and badges: a rest-day-aware streak calculation
-(planned rest never breaks a streak, and today's activity is never the
-reason a streak resets), weekly workout-goal progress, and milestone
-badges that are awarded once and never revoked. AI assistance and
-community features land in later phases per the brief's roadmap.
+**Phase 6 — Gemini AI nutrition assistant.** Django project scaffolded
+with environment-driven configuration, a responsive base template and
+design system, the landing page, authentication/onboarding/profiles,
+nutrition calculations with a food diary and water/step trackers, a
+calisthenics workout planner with guided sessions and progressive
+overload, streaks/weekly goals/badges, and now natural-language food
+logging: describe what you ate in plain text, and the Google Gemini API
+estimates nutrition per item (requesting structured JSON with a response
+schema), which is then validated field-by-field before anything reaches
+the database — malformed or out-of-range items are dropped rather than
+trusted. Nothing is logged automatically: the user reviews and can
+adjust quantities, meal category, or uncheck items before confirming.
+AI calls are capped per user per day (`GEMINI_DAILY_LIMIT`, default 20)
+to bound cost and abuse, and the feature degrades gracefully — with no
+`GEMINI_API_KEY` set, the rest of the app works exactly as before and
+the AI page explains it isn't configured rather than erroring. Community
+features land in a later phase per the brief's roadmap.
 
 **Known content gap:** exercise demonstration videos are not yet
 populated (`Exercise.video_url` is left blank for all seeded exercises)
@@ -36,7 +43,7 @@ python manage.py seed_badges
 
 - **Backend:** Python 3 + Django
 - **Database:** PostgreSQL (Supabase in production), SQLite for local dev
-- **AI:** Google Gemini API (Phase 6)
+- **AI:** Google Gemini API (natural-language food logging)
 - **Frontend:** Django templates, vanilla CSS/JS (no frontend framework)
 - **Static files:** WhiteNoise
 - **Deployment:** Railway/Render-style Django hosting (not Vercel — see

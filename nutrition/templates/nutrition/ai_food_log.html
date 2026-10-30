@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}AI food log &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Log food by describing it</h1>
+      <p>Tell the assistant what you ate in plain language. You'll review and confirm estimated nutrition before anything is logged.</p>
+    </div>
+
+    {% if not configured %}
+      <div class="card dashboard__prompt">
+        <p>The AI assistant isn't configured on this server yet. You can still <a href="{% url 'nutrition:food_search' %}">log food by searching</a>.</p>
+      </div>
+    {% else %}
+      <form class="card form-card" method="post" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label for="description">What did you eat?</label>
+          <textarea id="description" name="description" rows="4" maxlength="1000" placeholder="e.g. two scrambled eggs, a slice of wholegrain toast with butter, and a black coffee" required></textarea>
+        </div>
+        <button class="btn btn--primary btn--lg" type="submit">Estimate nutrition</button>
+        <p class="dashboard-card__note">{{ remaining_today }} AI requests left today.</p>
+      </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,17 +1,27 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import ActivityLevel, PrimaryGoal, Sex, UserProfile
 
+from . import views as views_module
+from .ai_client import (
+    GeminiConfigurationError,
+    GeminiRequestError,
+    GeminiResponseError,
+    parse_food_description,
+)
+from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import (
     calculate_bmi,
     calculate_bmr,
     calculate_daily_targets,
     calculate_tdee,
 )
-from .models import Food, MealEntry, StepLog, WaterLog
+from .models import AIFoodLogRequest, Food, MealEntry, StepLog, WaterLog
 
 
 class CalculationTests(TestCase):
@@ -208,3 +218,190 @@ class WaterAndStepTrackerTests(TestCase):
         today = timezone.localdate()
         self.assertEqual(StepLog.objects.filter(user=self.user, date=today).count(), 1)
         self.assertEqual(StepLog.objects.get(user=self.user, date=today).step_count, 9000)
+
+
+def _gemini_envelope(raw_items):
+    import json
+
+    return {"candidates": [{"content": {"parts": [{"text": json.dumps(raw_items)}]}}]}
+
+
+class GeminiClientTests(TestCase):
+    def test_raises_configuration_error_without_api_key(self):
+        with self.assertRaises(GeminiConfigurationError):
+            parse_food_description("an apple", api_key="")
+
+    def test_raises_on_blank_description(self):
+        with self.assertRaises(GeminiResponseError):
+            parse_food_description("   ", api_key="test-key")
+
+    @patch("nutrition.ai_client._call_gemini")
+    def test_happy_path_returns_validated_items(self, mock_call):
+        mock_call.return_value = _gemini_envelope(
+            [
+                {
+                    "name": "Apple",
+                    "quantity": 1,
+                    "unit": "medium",
+                    "meal_category": "snack",
+                    "calories": 95,
+                    "protein_g": 0.5,
+                    "carbs_g": 25,
+                    "fat_g": 0.3,
+                }
+            ]
+        )
+        items = parse_food_description("an apple", api_key="test-key")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].name, "Apple")
+        self.assertEqual(items[0].calories, 95)
+
+    @patch("nutrition.ai_client._call_gemini")
+    def test_items_missing_required_fields_are_dropped(self, mock_call):
+        mock_call.return_value = _gemini_envelope(
+            [{"name": "Mystery food", "quantity": 1, "unit": "serving"}]
+        )
+        with self.assertRaises(GeminiResponseError):
+            parse_food_description("something", api_key="test-key")
+
+    @patch("nutrition.ai_client._call_gemini")
+    def test_partial_batch_keeps_only_valid_items(self, mock_call):
+        mock_call.return_value = _gemini_envelope(
+            [
+                {"name": "Mystery food", "quantity": 1, "unit": "serving"},
+                {
+                    "name": "Banana",
+                    "quantity": 1,
+                    "unit": "medium",
+                    "meal_category": "snack",
+                    "calories": 105,
+                    "protein_g": 1.3,
+                    "carbs_g": 27,
+                    "fat_g": 0.4,
+                },
+            ]
+        )
+        items = parse_food_description("stuff", api_key="test-key")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].name, "Banana")
+
+    @patch("nutrition.ai_client._call_gemini")
+    def test_empty_description_in_items_returns_empty_list(self, mock_call):
+        mock_call.return_value = _gemini_envelope([])
+        items = parse_food_description("just water", api_key="test-key")
+        self.assertEqual(items, [])
+
+    @patch("nutrition.ai_client._call_gemini", side_effect=GeminiRequestError("down"))
+    def test_network_failure_propagates_as_gemini_request_error(self, mock_call):
+        with self.assertRaises(GeminiRequestError):
+            parse_food_description("an apple", api_key="test-key")
+
+    def test_malformed_envelope_raises_response_error(self):
+        with patch("nutrition.ai_client._call_gemini", return_value={"candidates": []}):
+            with self.assertRaises(GeminiResponseError):
+                parse_food_description("an apple", api_key="test-key")
+
+
+class AIRateLimitTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
+
+    def test_remaining_decreases_with_use(self):
+        self.assertEqual(requests_remaining_today(self.user), 20)
+        record_attempt_or_raise(self.user)
+        self.assertEqual(requests_remaining_today(self.user), 19)
+
+    @override_settings(GEMINI_DAILY_LIMIT=2)
+    def test_raises_once_daily_limit_is_reached(self):
+        record_attempt_or_raise(self.user)
+        record_attempt_or_raise(self.user)
+        with self.assertRaises(RateLimitExceeded):
+            record_attempt_or_raise(self.user)
+        self.assertEqual(AIFoodLogRequest.objects.filter(user=self.user).count(), 2)
+
+
+@override_settings(GEMINI_API_KEY="test-key")
+class AIFoodLogViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+
+    @override_settings(GEMINI_API_KEY="")
+    def test_form_shows_disabled_message_without_api_key(self):
+        response = self.client.get(reverse("nutrition:ai_food_log"))
+        self.assertContains(response, "isn't configured")
+
+    def test_blank_description_shows_error_and_does_not_call_gemini(self):
+        with patch("nutrition.views.parse_food_description") as mock_parse:
+            response = self.client.post(reverse("nutrition:ai_food_log"), {"description": ""}, follow=True)
+        mock_parse.assert_not_called()
+        self.assertContains(response, "Describe what you ate")
+
+    def test_gemini_error_shows_message_and_redirects_back(self):
+        with patch("nutrition.views.parse_food_description", side_effect=GeminiResponseError("bad output")):
+            response = self.client.post(
+                reverse("nutrition:ai_food_log"), {"description": "an apple"}, follow=True
+            )
+        self.assertContains(response, "bad output")
+
+    def test_successful_parse_redirects_to_review(self):
+        from .ai_client import ParsedFoodItem
+
+        item = ParsedFoodItem(
+            name="Apple", quantity=1, unit="medium", meal_category="snack",
+            calories=95, protein_g=0.5, carbs_g=25, fat_g=0.3,
+        )
+        with patch("nutrition.views.parse_food_description", return_value=[item]):
+            response = self.client.post(reverse("nutrition:ai_food_log"), {"description": "an apple"})
+        self.assertRedirects(response, reverse("nutrition:ai_food_log_review"))
+        self.assertEqual(self.client.session[views_module.AI_SESSION_KEY][0]["name"], "Apple")
+
+    def test_rate_limit_exceeded_blocks_call_to_gemini(self):
+        for _ in range(20):
+            AIFoodLogRequest.objects.create(user=self.user)
+        with patch("nutrition.views.parse_food_description") as mock_parse:
+            response = self.client.post(
+                reverse("nutrition:ai_food_log"), {"description": "an apple"}, follow=True
+            )
+        mock_parse.assert_not_called()
+        self.assertContains(response, "limit")
+
+    def test_review_without_session_data_redirects_to_form(self):
+        response = self.client.get(reverse("nutrition:ai_food_log_review"), follow=True)
+        self.assertRedirects(response, reverse("nutrition:ai_food_log"))
+
+    def test_confirming_review_creates_food_and_meal_entry(self):
+        session = self.client.session
+        session[views_module.AI_SESSION_KEY] = [
+            {
+                "name": "Apple", "quantity": 1, "unit": "medium", "meal_category": "snack",
+                "calories": 95, "protein_g": 0.5, "carbs_g": 25, "fat_g": 0.3,
+            }
+        ]
+        session.save()
+
+        response = self.client.post(
+            reverse("nutrition:ai_food_log_review"),
+            {"include_0": "on", "meal_category_0": "breakfast", "multiplier_0": "2"},
+        )
+        self.assertRedirects(response, reverse("nutrition:dashboard"))
+
+        entry = MealEntry.objects.get(user=self.user)
+        self.assertEqual(entry.food.name, "Apple")
+        self.assertEqual(entry.meal_category, "breakfast")
+        self.assertEqual(entry.quantity, 2)
+        self.assertEqual(entry.calories, 190)
+        self.assertNotIn(views_module.AI_SESSION_KEY, self.client.session)
+
+    def test_unchecking_an_item_does_not_log_it(self):
+        session = self.client.session
+        session[views_module.AI_SESSION_KEY] = [
+            {
+                "name": "Apple", "quantity": 1, "unit": "medium", "meal_category": "snack",
+                "calories": 95, "protein_g": 0.5, "carbs_g": 25, "fat_g": 0.3,
+            }
+        ]
+        session.save()
+
+        self.client.post(reverse("nutrition:ai_food_log_review"), {})
+        self.assertFalse(MealEntry.objects.filter(user=self.user).exists())

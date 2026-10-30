@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Review AI food log &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Review before logging</h1>
+      <p>These are estimates. Uncheck anything wrong, adjust the amount, and confirm.</p>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <ul class="food-results">
+        {% for row in rows %}
+          <li class="card food-result">
+            <div class="food-result__info">
+              <label>
+                <input type="checkbox" name="include_{{ row.index }}" checked>
+                <strong>{{ row.item.name }}</strong>
+              </label>
+              <p>{{ row.item.quantity|floatformat:0 }} {{ row.item.unit }} &middot; {{ row.item.calories|floatformat:0 }} kcal &middot; P {{ row.item.protein_g|floatformat:0 }}g &middot; C {{ row.item.carbs_g|floatformat:0 }}g &middot; F {{ row.item.fat_g|floatformat:0 }}g</p>
+            </div>
+            <div class="food-result__form">
+              <select name="meal_category_{{ row.index }}" aria-label="Meal">
+                {% for value, label in row.meal_categories %}
+                  <option value="{{ value }}" {% if value == row.item.meal_category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <input type="number" name="multiplier_{{ row.index }}" value="1" min="0.1" max="20" step="0.1" aria-label="Amount eaten (multiplier)">
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <button class="btn btn--primary btn--lg" type="submit">Confirm and log</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

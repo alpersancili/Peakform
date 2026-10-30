@@ -6,7 +6,7 @@
   <div class="container form-page">
     <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
       <h1>Log a food</h1>
-      <p>Search the food catalog, or <a href="{% url 'nutrition:custom_food_add' %}">add your own food</a> if you can't find it.</p>
+      <p>Search the food catalog, <a href="{% url 'nutrition:custom_food_add' %}">add your own food</a>, or <a href="{% url 'nutrition:ai_food_log' %}">describe it to the AI assistant</a>.</p>
     </div>
 
     <form method="get" class="search-bar">

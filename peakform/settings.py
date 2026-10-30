@@ -158,6 +158,8 @@ LOGOUT_REDIRECT_URL = "core:landing"
 
 # Third-party API keys (never hardcode; read from the environment only).
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_LIMIT", "20"))
 
 
 # Security hardening for production (no-ops locally when DEBUG is True).
