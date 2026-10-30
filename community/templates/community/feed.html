@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ feed_title }} &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>{{ feed_title }}</h1>
+      <p>Meals, recipes, workout programs, training photos, and milestones from the Peakform community.</p>
+    </div>
+
+    <div class="community-tabs">
+      <a class="btn {% if not following_only %}btn--primary{% else %}btn--ghost{% endif %} btn--sm" href="{% url 'community:feed' %}">Everyone</a>
+      {% if request.user.is_authenticated %}
+        <a class="btn {% if following_only %}btn--primary{% else %}btn--ghost{% endif %} btn--sm" href="{% url 'community:following_feed' %}">Following</a>
+      {% endif %}
+    </div>
+
+    {% if request.user.is_authenticated and not following_only %}
+      <form class="card form-card post-composer" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="field">
+            <label for="{{ form.post_type.id_for_label }}">{{ form.post_type.label }}</label>
+            {{ form.post_type }}
+          </div>
+          <div class="field">
+            <label for="{{ form.body.id_for_label }}">{{ form.body.label }}</label>
+            {{ form.body }}
+            {% for error in form.body.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="field">
+            <label for="{{ form.image.id_for_label }}">Photo (optional)</label>
+            {{ form.image }}
+            {% for error in form.image.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        </div>
+        <button class="btn btn--primary" type="submit">Post</button>
+      </form>
+    {% elif not following_only %}
+      <div class="card dashboard__prompt">
+        <p><a href="{% url 'accounts:login' %}">Sign in</a> to post, like, comment, and follow.</p>
+      </div>
+    {% endif %}
+
+    {% if not page.object_list %}
+      <p class="empty-state">
+        {% if following_only %}
+          Nothing here yet. Follow some athletes from their profile page to see their posts.
+        {% else %}
+          No posts yet &mdash; be the first to share something.
+        {% endif %}
+      </p>
+    {% else %}
+      <div class="post-list">
+        {% for post in page %}
+          {% include "community/_post_card.html" %}
+        {% endfor %}
+      </div>
+      {% include "community/_pagination.html" %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

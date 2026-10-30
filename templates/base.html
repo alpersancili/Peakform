@@ -33,6 +33,7 @@
         {% if request.user.is_authenticated %}
           <a href="{% url 'nutrition:dashboard' %}" class="site-nav__mobile-only">Dashboard</a>
           <a href="{% url 'workouts:plan_overview' %}" class="site-nav__mobile-only">Workouts</a>
+          <a href="{% url 'community:feed' %}" class="site-nav__mobile-only">Community</a>
           <a href="{% url 'motivation:badges_list' %}" class="site-nav__mobile-only">Badges</a>
           <a href="{% url 'accounts:profile' %}" class="site-nav__mobile-only">My profile</a>
         {% else %}
@@ -48,6 +49,7 @@
         {% if request.user.is_authenticated %}
           <a class="btn btn--ghost" href="{% url 'accounts:profile' %}">My profile</a>
           <a class="btn btn--ghost" href="{% url 'workouts:plan_overview' %}">Workouts</a>
+          <a class="btn btn--ghost" href="{% url 'community:feed' %}">Community</a>
           <a class="btn btn--ghost" href="{% url 'motivation:badges_list' %}">Badges</a>
           <a class="btn btn--primary" href="{% url 'nutrition:dashboard' %}">Dashboard</a>
         {% else %}

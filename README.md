@@ -8,23 +8,25 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 6 — Gemini AI nutrition assistant.** Django project scaffolded
-with environment-driven configuration, a responsive base template and
-design system, the landing page, authentication/onboarding/profiles,
-nutrition calculations with a food diary and water/step trackers, a
-calisthenics workout planner with guided sessions and progressive
-overload, streaks/weekly goals/badges, and now natural-language food
-logging: describe what you ate in plain text, and the Google Gemini API
-estimates nutrition per item (requesting structured JSON with a response
-schema), which is then validated field-by-field before anything reaches
-the database — malformed or out-of-range items are dropped rather than
-trusted. Nothing is logged automatically: the user reviews and can
-adjust quantities, meal category, or uncheck items before confirming.
-AI calls are capped per user per day (`GEMINI_DAILY_LIMIT`, default 20)
-to bound cost and abuse, and the feature degrades gracefully — with no
-`GEMINI_API_KEY` set, the rest of the app works exactly as before and
-the AI page explains it isn't configured rather than erroring. Community
-features land in a later phase per the brief's roadmap.
+**Phase 7 — Global community.** Django project scaffolded with
+environment-driven configuration, a responsive base template and design
+system, the landing page, authentication/onboarding/profiles, nutrition
+calculations with a food diary and water/step trackers and Gemini-powered
+natural-language food logging, a calisthenics workout planner with
+guided sessions and progressive overload, streaks/weekly goals/badges,
+and now a public community feed: text posts (with an optional photo)
+about meals, recipes, workout programs, training photos, skills, and
+progress; likes; one level of threaded comments/replies; following other
+users and a dedicated following feed; public profiles; editing and
+deleting your own content; and reporting posts or comments for spam,
+harassment, misleading content, or inappropriate images. Anyone can
+browse the feed and public profiles; posting, commenting, liking,
+following, and reporting require signing in. Authorization is enforced
+server-side (editing/deleting another user's content 404s rather than
+succeeding), uploaded images are restricted by file extension and a 5MB
+size cap, and moderators can hide reported content from the Django admin
+without deleting the underlying record. Polish and deployment land in
+the final phase per the brief's roadmap.
 
 **Known content gap:** exercise demonstration videos are not yet
 populated (`Exercise.video_url` is left blank for all seeded exercises)
@@ -100,7 +102,11 @@ configuration is finalized in Phase 8 of the roadmap.
 ```
 peakform/       Project settings, root URLs, WSGI/ASGI entry points
 core/           Landing page and shared/foundational views
-accounts/       User profiles and onboarding (Phase 2)
+accounts/       User profiles and onboarding
+nutrition/      Nutrition calculations, food diary, AI food logging
+workouts/       Calisthenics workout planning and guided sessions
+motivation/     Streaks, weekly goals, and badges
+community/      Public feed, posts, comments, follows, reports
 templates/      Shared base template
 static/         Design system CSS and JS
 docs/           Product brief

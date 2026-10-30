@@ -100,15 +100,19 @@
         people on a similar journey, swap tips, and ask questions &mdash;
         from complete beginners to advanced calisthenics athletes.
       </p>
-      <a class="btn btn--secondary" href="{% url 'accounts:register' %}">Join Peakform</a>
+      <a class="btn btn--secondary" href="{% url 'community:feed' %}">Browse the community</a>
     </div>
     <div class="card">
       <h3>Recent in the community</h3>
-      <ul class="mini-feed">
-        <li><strong>Mia R.</strong> hit a 30-second handstand hold for the first time. <span>2h ago</span></li>
-        <li><strong>Dev K.</strong> shared a high-protein post-workout bowl recipe. <span>5h ago</span></li>
-        <li><strong>Sam O.</strong> completed a 14-day training streak. <span>1d ago</span></li>
-      </ul>
+      {% if recent_posts %}
+        <ul class="mini-feed">
+          {% for post in recent_posts %}
+            <li><strong>{{ post.author.username }}</strong> {{ post.body|truncatechars:70 }} <span>{{ post.created_at|timesince }} ago</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Be the first to post &mdash; <a href="{% url 'accounts:register' %}">join Peakform</a> and share something with the community.</p>
+      {% endif %}
     </div>
   </div>
 </section>
