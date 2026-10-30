@@ -86,7 +86,7 @@ left unset.
 | `DJANGO_LOG_LEVEL` | Console log level in production (`INFO` by default; `DEBUG` for more verbose troubleshooting). |
 | `DATABASE_URL` | Postgres connection string (Supabase). Unset = local SQLite. |
 | `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. Unset = the feature is disabled with a clear in-app message; nothing else breaks. |
-| `GEMINI_MODEL` | Gemini model id (default `gemini-2.0-flash`). |
+| `GEMINI_MODEL` | Gemini model id (default `gemini-3.1-flash-lite`). |
 | `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
 
 ## Running tests

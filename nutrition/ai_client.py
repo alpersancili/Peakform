@@ -177,7 +177,7 @@ def parse_food_description(description, *, api_key=None, model=None):
         raise GeminiResponseError("Please describe what you ate.")
     description = description[:MAX_DESCRIPTION_LENGTH]
 
-    model = model or getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
+    model = model or getattr(settings, "GEMINI_MODEL", "gemini-3.1-flash-lite")
     prompt = PROMPT_INSTRUCTIONS + description
 
     envelope = _call_gemini(prompt, api_key=api_key, model=model)
