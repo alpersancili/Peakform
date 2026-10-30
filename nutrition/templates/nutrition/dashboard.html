@@ -8,6 +8,7 @@
       <div>
         <h1>Today</h1>
         <p>{{ profile.user.username }}'s daily summary</p>
+        <a class="streak-chip" href="{% url 'motivation:badges_list' %}">{{ streak }} day streak</a>
       </div>
       <a class="btn btn--primary" href="{% url 'nutrition:food_search' %}">+ Log food</a>
     </div>

@@ -8,6 +8,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from motivation.badges import evaluate_badges
+from motivation.streaks import calculate_current_streak
+
 from .calculations import calculate_bmi, calculate_daily_targets
 from .forms import CustomFoodForm, MealEntryForm, StepLogForm, WaterQuickAddForm
 from .models import Food, MealCategory, MealEntry, StepLog, WaterLog
@@ -77,6 +80,7 @@ def dashboard(request):
         "step_form": StepLogForm(initial={"step_count": steps_today}),
         "water_form": WaterQuickAddForm(),
         "weekly_chart": weekly_chart,
+        "streak": calculate_current_streak(request.user, today=today),
     }
     return render(request, "nutrition/dashboard.html", context)
 
@@ -112,6 +116,8 @@ def add_meal_entry(request, food_id):
             entry.food = food
             entry.save()
             messages.success(request, f"Logged {food.name}.")
+            for badge in evaluate_badges(request.user):
+                messages.success(request, f"New badge: {badge.name}!")
             return redirect("nutrition:dashboard")
         messages.error(request, "Couldn't log that food. Check the quantity and try again.")
     return redirect(back_to_search)

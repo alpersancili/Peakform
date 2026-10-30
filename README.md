@@ -8,15 +8,16 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 4 — Workout planning and guided sessions.** Django project
-scaffolded with environment-driven configuration, a responsive base
-template and design system, the landing page, authentication/onboarding/
-profiles, nutrition calculations with a food diary and water/step
-trackers, and now a calisthenics workout planner: deterministic plan
-generation (not AI) with planned rest days, a guided session view with
-a client-side rest timer and per-set logging, and rule-based progressive
-overload. Habits/streaks, AI assistance, and community features land in
-later phases per the brief's roadmap.
+**Phase 5 — Habits and motivation.** Django project scaffolded with
+environment-driven configuration, a responsive base template and design
+system, the landing page, authentication/onboarding/profiles, nutrition
+calculations with a food diary and water/step trackers, a calisthenics
+workout planner with guided sessions and progressive overload, and now
+streaks, weekly goals, and badges: a rest-day-aware streak calculation
+(planned rest never breaks a streak, and today's activity is never the
+reason a streak resets), weekly workout-goal progress, and milestone
+badges that are awarded once and never revoked. AI assistance and
+community features land in later phases per the brief's roadmap.
 
 **Known content gap:** exercise demonstration videos are not yet
 populated (`Exercise.video_url` is left blank for all seeded exercises)
@@ -28,6 +29,7 @@ Seed reference data after migrating:
 ```bash
 python manage.py seed_foods
 python manage.py seed_exercises
+python manage.py seed_badges
 ```
 
 ## Tech stack

@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from motivation.badges import evaluate_badges
+
 from .forms import PlanGenerateForm, RecoveryNoteForm, SetLogForm
 from .generation import generate_plan_days, suggest_progression
 from .models import (
@@ -170,6 +172,8 @@ def session_complete(request, session_id):
         messages.success(request, "Workout complete. Nice work!")
         for note in progression_notes:
             messages.info(request, note)
+        for badge in evaluate_badges(request.user):
+            messages.success(request, f"New badge: {badge.name}!")
 
     return redirect("workouts:session_history")
 

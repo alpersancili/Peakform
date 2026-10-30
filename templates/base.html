@@ -30,15 +30,25 @@
       </button>
 
       <nav id="primary-nav" class="site-nav" aria-label="Primary">
-        <a href="{% url 'core:landing' %}#features">Features</a>
-        <a href="{% url 'core:landing' %}#community">Community</a>
-        <a href="{% url 'core:landing' %}#about">About</a>
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'nutrition:dashboard' %}" class="site-nav__mobile-only">Dashboard</a>
+          <a href="{% url 'workouts:plan_overview' %}" class="site-nav__mobile-only">Workouts</a>
+          <a href="{% url 'motivation:badges_list' %}" class="site-nav__mobile-only">Badges</a>
+          <a href="{% url 'accounts:profile' %}" class="site-nav__mobile-only">My profile</a>
+        {% else %}
+          <a href="{% url 'core:landing' %}#features">Features</a>
+          <a href="{% url 'core:landing' %}#community">Community</a>
+          <a href="{% url 'core:landing' %}#about">About</a>
+          <a href="{% url 'accounts:login' %}" class="site-nav__mobile-only">Sign in</a>
+          <a href="{% url 'accounts:register' %}" class="site-nav__mobile-only">Get started</a>
+        {% endif %}
       </nav>
 
       <div class="site-header__actions">
         {% if request.user.is_authenticated %}
           <a class="btn btn--ghost" href="{% url 'accounts:profile' %}">My profile</a>
           <a class="btn btn--ghost" href="{% url 'workouts:plan_overview' %}">Workouts</a>
+          <a class="btn btn--ghost" href="{% url 'motivation:badges_list' %}">Badges</a>
           <a class="btn btn--primary" href="{% url 'nutrition:dashboard' %}">Dashboard</a>
         {% else %}
           <a class="btn btn--ghost" href="{% url 'accounts:login' %}">Sign in</a>
