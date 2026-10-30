@@ -1,4 +1,4 @@
-{% load static %}
+{% load static asset_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% versioned_static 'css/base.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -38,6 +38,7 @@
       <div class="site-header__actions">
         {% if request.user.is_authenticated %}
           <a class="btn btn--ghost" href="{% url 'accounts:profile' %}">My profile</a>
+          <a class="btn btn--primary" href="{% url 'nutrition:dashboard' %}">Dashboard</a>
         {% else %}
           <a class="btn btn--ghost" href="{% url 'accounts:login' %}">Sign in</a>
           <a class="btn btn--primary" href="{% url 'accounts:register' %}">Get started</a>
@@ -90,7 +91,7 @@
     </div>
   </footer>
 
-  <script src="{% static 'js/main.js' %}"></script>
+  <script src="{% versioned_static 'js/main.js' %}"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

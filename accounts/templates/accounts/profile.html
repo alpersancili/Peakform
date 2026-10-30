@@ -9,7 +9,10 @@
         <h1>{{ request.user.username }}</h1>
         <p>{{ request.user.email }}</p>
       </div>
-      <a class="btn btn--primary" href="{% url 'accounts:profile_edit' %}">Edit profile</a>
+      <div class="profile-header__actions">
+        <a class="btn btn--ghost" href="{% url 'nutrition:dashboard' %}">Dashboard</a>
+        <a class="btn btn--primary" href="{% url 'accounts:profile_edit' %}">Edit profile</a>
+      </div>
     </div>
 
     <div class="card profile-summary">

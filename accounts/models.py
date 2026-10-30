@@ -96,6 +96,11 @@ class UserProfile(models.Model):
 
     country = models.CharField(max_length=100, blank=True)
 
+    water_goal_ml = models.PositiveIntegerField(default=2000)
+    water_serving_ml = models.PositiveIntegerField(default=250)
+    step_goal = models.PositiveIntegerField(default=8000)
+    calorie_target_override = models.PositiveIntegerField(null=True, blank=True)
+
     onboarding_completed = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)

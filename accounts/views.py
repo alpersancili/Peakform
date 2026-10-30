@@ -29,7 +29,7 @@ def onboarding(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
     if profile.onboarding_completed:
-        return redirect("accounts:profile")
+        return redirect("nutrition:dashboard")
 
     if request.method == "POST":
         form = ProfileForm(request.POST, instance=profile)
@@ -38,7 +38,7 @@ def onboarding(request):
             profile.onboarding_completed = True
             profile.save()
             messages.success(request, "Your profile is set up.")
-            return redirect("accounts:profile")
+            return redirect("nutrition:dashboard")
     else:
         form = ProfileForm(instance=profile)
 

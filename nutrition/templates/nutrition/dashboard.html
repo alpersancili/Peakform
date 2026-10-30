@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section dashboard">
+  <div class="container">
+    <div class="dashboard__header">
+      <div>
+        <h1>Today</h1>
+        <p>{{ profile.user.username }}'s daily summary</p>
+      </div>
+      <a class="btn btn--primary" href="{% url 'nutrition:food_search' %}">+ Log food</a>
+    </div>
+
+    {% if not targets %}
+      <div class="card dashboard__prompt">
+        <p>Add your height and weight to see personalized calorie and macro targets.</p>
+        <a class="btn btn--secondary" href="{% url 'accounts:profile_edit' %}">Complete your profile</a>
+      </div>
+    {% endif %}
+
+    <div class="dashboard-grid">
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Calories</h2>
+        {% if targets %}
+          {% widthratio totals.calories|default:0 targets.calories 100 as calorie_pct %}
+          <div class="calorie-ring" style="background: conic-gradient(var(--color-primary) 0% {{ calorie_pct }}%, var(--color-border) 0 100%);">
+          </div>
+          <p class="calorie-ring__value">{{ totals.calories|default:0|floatformat:0 }} <small>/ {{ targets.calories }} kcal</small></p>
+
+          <div class="macro-bars">
+            <div class="macro-bar">
+              <div class="macro-bar__label"><span>Protein</span><span>{{ totals.protein_g|default:0|floatformat:0 }}g / {{ targets.protein_g }}g</span></div>
+              <div class="progress-track"><span style="width: {% widthratio totals.protein_g|default:0 targets.protein_g 100 %}%; background: var(--color-primary);"></span></div>
+            </div>
+            <div class="macro-bar">
+              <div class="macro-bar__label"><span>Carbs</span><span>{{ totals.carbs_g|default:0|floatformat:0 }}g / {{ targets.carbs_g }}g</span></div>
+              <div class="progress-track"><span style="width: {% widthratio totals.carbs_g|default:0 targets.carbs_g 100 %}%; background: var(--color-secondary);"></span></div>
+            </div>
+            <div class="macro-bar">
+              <div class="macro-bar__label"><span>Fat</span><span>{{ totals.fat_g|default:0|floatformat:0 }}g / {{ targets.fat_g }}g</span></div>
+              <div class="progress-track"><span style="width: {% widthratio totals.fat_g|default:0 targets.fat_g 100 %}%; background: var(--color-accent);"></span></div>
+            </div>
+          </div>
+
+          {% if bmi %}<p class="dashboard-card__note">BMI (estimate only): {{ bmi }}</p>{% endif %}
+        {% else %}
+          <p class="dashboard-card__note">Targets will appear once your profile has height and weight.</p>
+        {% endif %}
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Water</h2>
+        <p class="tracker-value">{{ water_total_ml }} <small>/ {{ profile.water_goal_ml }} ml</small></p>
+        <div class="progress-track progress-track--lg"><span style="width: {% widthratio water_total_ml profile.water_goal_ml 100 %}%; background: var(--color-secondary);"></span></div>
+
+        <form method="post" action="{% url 'nutrition:water_add' %}" class="tracker-actions">
+          {% csrf_token %}
+          <button class="btn btn--secondary" type="submit">+ {{ profile.water_serving_ml }} ml</button>
+        </form>
+        <form method="post" action="{% url 'nutrition:water_add' %}" class="tracker-custom">
+          {% csrf_token %}
+          <input type="number" name="amount_ml" min="1" max="5000" placeholder="Custom ml" aria-label="Custom water amount">
+          <button class="btn btn--ghost" type="submit">Add</button>
+        </form>
+
+        {% if water_logs_today %}
+          <ul class="tracker-log">
+            {% for log in water_logs_today %}
+              <li>
+                {{ log.amount_ml }} ml &middot; {{ log.logged_at|time:"H:i" }}
+                <form method="post" action="{% url 'nutrition:water_delete' log.id %}">
+                  {% csrf_token %}
+                  <button class="link-button" type="submit" aria-label="Remove entry">&times;</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Steps</h2>
+        <p class="tracker-value">{{ steps_today }} <small>/ {{ profile.step_goal }} steps</small></p>
+        <div class="progress-track progress-track--lg"><span style="width: {% widthratio steps_today profile.step_goal 100 %}%; background: var(--color-primary);"></span></div>
+
+        <form method="post" action="{% url 'nutrition:step_set' %}" class="tracker-custom">
+          {% csrf_token %}
+          {{ step_form.step_count }}
+          <button class="btn btn--secondary" type="submit">Update</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card dashboard-section">
+      <h2 class="dashboard-card__title">Food diary</h2>
+      {% for category, entries in meals_by_category.items %}
+        <div class="diary-category">
+          <h3>{{ category|title }}</h3>
+          {% if entries %}
+            <ul class="diary-list">
+              {% for entry in entries %}
+                <li>
+                  <span class="diary-list__name">{{ entry.food.name }} &times;{{ entry.quantity|floatformat:1 }}</span>
+                  <span class="diary-list__macros">{{ entry.calories|floatformat:0 }} kcal</span>
+                  <span class="diary-list__actions">
+                    <a href="{% url 'nutrition:meal_entry_edit' entry.id %}">Edit</a>
+                    <form method="post" action="{% url 'nutrition:meal_entry_delete' entry.id %}">
+                      {% csrf_token %}
+                      <button class="link-button" type="submit">Remove</button>
+                    </form>
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="diary-empty">Nothing logged yet.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="card dashboard-section">
+      <h2 class="dashboard-card__title">This week</h2>
+      <div class="weekly-chart">
+        {% for day in weekly_chart %}
+          <div class="weekly-chart__bar-wrap">
+            <div class="weekly-chart__bar {% if day.is_today %}weekly-chart__bar--today{% endif %}" style="height: {{ day.pct }}%;" title="{{ day.calories }} kcal"></div>
+            <span>{{ day.date|date:"D" }}</span>
+          </div>
+        {% endfor %}
+      </div>
+      <p class="dashboard-card__note">Bars show calories logged as a percentage of your daily target.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

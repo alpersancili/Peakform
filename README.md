@@ -8,10 +8,19 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**Phase 1 — Foundation.** Django project scaffolded with environment-driven
-configuration, a responsive base template and design system, and the landing
-page. Authentication, nutrition tools, workouts, and community features land
-in later phases per the brief's roadmap.
+**Phase 3 — Nutrition core and daily dashboard.** Django project scaffolded
+with environment-driven configuration, a responsive base template and design
+system, the landing page, authentication/onboarding/profiles, and now BMI,
+BMR, TDEE, and macro calculations with a food diary, water/step trackers,
+and a daily dashboard with a weekly calories chart. Workouts, habits,
+AI assistance, and community features land in later phases per the
+brief's roadmap.
+
+Seed the shared food catalog after migrating:
+
+```bash
+python manage.py seed_foods
+```
 
 ## Tech stack
 

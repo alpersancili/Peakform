@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Log food &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Log a food</h1>
+      <p>Search the food catalog, or <a href="{% url 'nutrition:custom_food_add' %}">add your own food</a> if you can't find it.</p>
+    </div>
+
+    <form method="get" class="search-bar">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search foods, e.g. &quot;chicken breast&quot;" autofocus>
+      <button class="btn btn--primary" type="submit">Search</button>
+    </form>
+
+    {% if query and not results %}
+      <p class="empty-state">No foods found for &ldquo;{{ query }}&rdquo;. <a href="{% url 'nutrition:custom_food_add' %}">Add it as a custom food</a>.</p>
+    {% endif %}
+
+    <ul class="food-results">
+      {% for food in results %}
+        <li class="card food-result">
+          <div class="food-result__info">
+            <h3>{{ food.name }}</h3>
+            <p>{{ food.serving_size|floatformat:0 }}{{ food.serving_unit }} &middot; {{ food.calories|floatformat:0 }} kcal &middot; P {{ food.protein_g|floatformat:0 }}g &middot; C {{ food.carbs_g|floatformat:0 }}g &middot; F {{ food.fat_g|floatformat:0 }}g</p>
+          </div>
+          <form method="post" action="{% url 'nutrition:add_meal_entry' food.id %}" class="food-result__form">
+            {% csrf_token %}
+            <input type="hidden" name="q" value="{{ query }}">
+            <select name="meal_category" aria-label="Meal">
+              {% for value, label in meal_categories %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <input type="number" name="quantity" value="1" min="0.1" step="0.1" aria-label="Servings">
+            <button class="btn btn--secondary" type="submit">Add</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

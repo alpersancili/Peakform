@@ -39,12 +39,12 @@ class LoginTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
 
-    def test_login_redirects_to_profile(self):
+    def test_login_redirects_to_dashboard(self):
         response = self.client.post(
             reverse("accounts:login"),
             {"username": "athlete", "password": "password123!"},
         )
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("nutrition:dashboard"))
 
     def test_logout_requires_post(self):
         self.client.login(username="athlete", password="password123!")
@@ -88,7 +88,7 @@ class OnboardingFormTests(TestCase):
                 "dietary_preferences": ["none"],
             },
         )
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("nutrition:dashboard"))
 
         profile = UserProfile.objects.get(user=self.user)
         self.assertTrue(profile.onboarding_completed)
@@ -115,7 +115,7 @@ class OnboardingFormTests(TestCase):
                 "dietary_preferences": ["vegetarian"],
             },
         )
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("nutrition:dashboard"))
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(profile.height_cm, 168.0)
         self.assertEqual(profile.weight_kg, 62.0)
@@ -140,7 +140,7 @@ class OnboardingFormTests(TestCase):
         profile.onboarding_completed = True
         profile.save()
         response = self.client.get(reverse("accounts:onboarding"))
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("nutrition:dashboard"))
 
 
 class ProfileEditTests(TestCase):
