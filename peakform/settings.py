@@ -9,6 +9,7 @@ supported variables.
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -147,8 +148,41 @@ STORAGES = {
 }
 
 # User-uploaded media (profile photos, community post images).
+# Local disk by default (fine for local dev, and as a fallback), which
+# works but isn't durable on most PaaS hosts (wiped on redeploy). Set the
+# SUPABASE_S3_* variables in production to store uploads in Supabase
+# Storage instead, via its S3-compatible API.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+SUPABASE_S3_ACCESS_KEY_ID = os.environ.get("SUPABASE_S3_ACCESS_KEY_ID", "")
+SUPABASE_S3_SECRET_ACCESS_KEY = os.environ.get("SUPABASE_S3_SECRET_ACCESS_KEY", "")
+SUPABASE_S3_ENDPOINT_URL = os.environ.get("SUPABASE_S3_ENDPOINT_URL", "")
+SUPABASE_S3_REGION = os.environ.get("SUPABASE_S3_REGION", "")
+SUPABASE_S3_BUCKET = os.environ.get("SUPABASE_S3_BUCKET", "community-images")
+
+if SUPABASE_S3_ACCESS_KEY_ID and SUPABASE_S3_SECRET_ACCESS_KEY and SUPABASE_S3_ENDPOINT_URL:
+    # The bucket is public, so reads should go through Supabase's own public
+    # object URL (unauthenticated, CDN-friendly) rather than a signed S3
+    # URL - `custom_domain` makes django-storages build URLs that way while
+    # uploads/deletes still go over the (always authenticated) S3 API.
+    _supabase_storage_host = urlparse(SUPABASE_S3_ENDPOINT_URL).hostname or ""
+    _supabase_project_ref = _supabase_storage_host.split(".")[0]
+
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": SUPABASE_S3_ACCESS_KEY_ID,
+            "secret_key": SUPABASE_S3_SECRET_ACCESS_KEY,
+            "bucket_name": SUPABASE_S3_BUCKET,
+            "endpoint_url": SUPABASE_S3_ENDPOINT_URL,
+            "region_name": SUPABASE_S3_REGION or "auto",
+            "addressing_style": "path",
+            "default_acl": None,
+            "file_overwrite": False,
+            "custom_domain": f"{_supabase_project_ref}.supabase.co/storage/v1/object/public/{SUPABASE_S3_BUCKET}",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

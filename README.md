@@ -88,6 +88,10 @@ left unset.
 | `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. Unset = the feature is disabled with a clear in-app message; nothing else breaks. |
 | `GEMINI_MODEL` | Gemini model id (default `gemini-3.1-flash-lite`). |
 | `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
+| `SUPABASE_S3_ACCESS_KEY_ID` / `SUPABASE_S3_SECRET_ACCESS_KEY` | Supabase Storage S3 credentials, from Project Settings -> Storage -> S3 Connection. Unset = uploads go to local disk. |
+| `SUPABASE_S3_ENDPOINT_URL` | e.g. `https://<ref>.storage.supabase.co/storage/v1/s3`, from the same S3 Connection page. |
+| `SUPABASE_S3_REGION` | Your Supabase project's region, e.g. `eu-central-1`. |
+| `SUPABASE_S3_BUCKET` | Storage bucket name (default `community-images`). |
 
 ## Running tests
 
@@ -130,13 +134,13 @@ management).
    collectstatic --noinput` and the start command to `gunicorn
    peakform.wsgi --log-file -` (Render runs migrations as a separate
    step rather than via the Procfile).
-6. **Media storage:** user-uploaded community post images are written to
-   local disk (`MEDIA_ROOT`) by default, which works but isn't
-   persistent across redeploys on most platform-as-a-service hosts.
-   For a production deployment, point Django at object storage (e.g.
-   Supabase Storage or S3-compatible storage via `django-storages`)
-   instead — the codebase doesn't hardcode local storage anywhere that
-   would block this.
+6. **Media storage:** local disk (`MEDIA_ROOT`) by default, which isn't
+   persistent across redeploys on most platform-as-a-service hosts. Set
+   the `SUPABASE_S3_*` variables (see above) to store uploads in
+   Supabase Storage instead, over its S3-compatible API — reads go
+   straight to Supabase's public object URL (the bucket is public and
+   read-only for anonymous requests; all writes require the S3
+   credentials, which only the server holds).
 7. Seed reference data once, after the first deploy:
    `python manage.py seed_foods && python manage.py seed_exercises &&
    python manage.py seed_badges` (idempotent — safe to re-run).
