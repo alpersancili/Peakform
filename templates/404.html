@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Page not found &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section cta">
+  <div class="container cta__inner">
+    <h1>Page not found</h1>
+    <p>That page doesn't exist, or it's been moved.</p>
+    <a class="btn btn--primary btn--lg" href="{% url 'core:landing' %}">Back to Peakform</a>
+  </div>
+</section>
+{% endblock %}

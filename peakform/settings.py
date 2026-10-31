@@ -168,6 +168,11 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # The CSRF cookie is only ever read server-side (via the {% csrf_token %}
+    # hidden input) - nothing in this app's JS reads it - so there's no
+    # reason client-side script should be able to either.
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_REFERRER_POLICY = "same-origin"
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
