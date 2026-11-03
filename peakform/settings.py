@@ -207,7 +207,18 @@ if not DEBUG:
     # hidden input) - nothing in this app's JS reads it - so there's no
     # reason client-side script should be able to either.
     CSRF_COOKIE_HTTPONLY = True
-    SECURE_REFERRER_POLICY = "same-origin"
+    # "same-origin" (tried first) sends NO referrer at all on cross-origin
+    # requests - including the embedded YouTube <iframe> on workout
+    # sessions, which needs to see a referrer to verify what site is
+    # embedding it. Without one it fails with YouTube's "Error 153"
+    # (embedder identity missing referrer) on every single video,
+    # regardless of the video or channel - this was the real cause of
+    # every exercise video failing, not a per-video embedding permission
+    # issue. "strict-origin-when-cross-origin" (also most browsers'
+    # own default) still protects full-URL privacy on cross-origin
+    # requests - only the scheme+host is sent, never the path or query
+    # string - while sending enough for YouTube's embed check to pass.
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
