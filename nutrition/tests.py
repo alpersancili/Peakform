@@ -64,6 +64,27 @@ class CalculationTests(TestCase):
         )
         self.assertLess(targets.calories, maintenance.calories)
 
+    def test_skills_goal_is_a_modest_deficit_not_pure_maintenance(self):
+        # Calisthenics skill training (planche, front lever, handstand)
+        # benefits from training leaner - a lighter body makes every lever
+        # genuinely easier - so Skills shouldn't default to pure
+        # maintenance like General Fitness does, but shouldn't be as
+        # aggressive a cut as dedicated Fat Loss either.
+        skills = calculate_daily_targets(
+            weight_kg=80, height_cm=180, age=30, sex=Sex.MALE,
+            activity_level=ActivityLevel.MODERATE, primary_goal=PrimaryGoal.SKILLS,
+        )
+        maintenance = calculate_daily_targets(
+            weight_kg=80, height_cm=180, age=30, sex=Sex.MALE,
+            activity_level=ActivityLevel.MODERATE, primary_goal=PrimaryGoal.GENERAL_FITNESS,
+        )
+        fat_loss = calculate_daily_targets(
+            weight_kg=80, height_cm=180, age=30, sex=Sex.MALE,
+            activity_level=ActivityLevel.MODERATE, primary_goal=PrimaryGoal.FAT_LOSS,
+        )
+        self.assertLess(skills.calories, maintenance.calories)
+        self.assertGreater(skills.calories, fat_loss.calories)
+
     def test_daily_targets_respects_safety_floor(self):
         # Very light, small, older user with a large deficit goal shouldn't
         # be pushed below the minimum safe calorie floor.

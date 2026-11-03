@@ -20,24 +20,33 @@ ACTIVITY_MULTIPLIERS = {
 
 # Calorie adjustment from maintenance (TDEE) per goal. Fat loss uses a
 # moderate deficit (~0.45 kg/week); gain goals use a modest surplus to
-# favor lean mass over fat gain.
+# favor lean mass over fat gain. Skills gets a smaller deficit (not pure
+# maintenance): calisthenics skill training (planche, front lever,
+# handstand) is itself a strength-to-bodyweight-ratio sport, so training
+# somewhat leaner is standard practice in that community, not just an
+# aesthetic choice - a lighter body makes every lever genuinely easier -
+# but a full fat-loss-sized deficit would compromise the performance and
+# recovery those sessions need, hence -250 rather than -500.
 GOAL_CALORIE_ADJUSTMENT = {
     PrimaryGoal.FAT_LOSS: -500,
     PrimaryGoal.MUSCLE_GAIN: 300,
     PrimaryGoal.STRENGTH: 200,
     PrimaryGoal.ENDURANCE: 200,
-    PrimaryGoal.SKILLS: 0,
+    PrimaryGoal.SKILLS: -250,
     PrimaryGoal.FLEXIBILITY: 0,
     PrimaryGoal.GENERAL_FITNESS: 0,
 }
 
-# Protein target in grams per kg of bodyweight, by goal.
+# Protein target in grams per kg of bodyweight, by goal. Kept relatively
+# high even in a deficit (fat_loss, skills) since adequate protein is
+# what actually preserves muscle/strength while leaning out - cutting it
+# along with calories is a common mistake, not a goal of a deficit.
 GOAL_PROTEIN_G_PER_KG = {
     PrimaryGoal.FAT_LOSS: 2.2,
     PrimaryGoal.MUSCLE_GAIN: 2.0,
     PrimaryGoal.STRENGTH: 2.0,
     PrimaryGoal.ENDURANCE: 1.6,
-    PrimaryGoal.SKILLS: 1.8,
+    PrimaryGoal.SKILLS: 2.0,
     PrimaryGoal.FLEXIBILITY: 1.6,
     PrimaryGoal.GENERAL_FITNESS: 1.8,
 }
