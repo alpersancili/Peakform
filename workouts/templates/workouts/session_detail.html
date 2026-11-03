@@ -46,9 +46,14 @@
           </ul>
         {% endif %}
 
-        <div class="rest-timer" data-rest-timer data-seconds="{{ pe.rest_seconds }}">
+        <div class="rest-timer" data-rest-timer data-recommended-seconds="{{ pe.rest_seconds }}">
           <span class="rest-timer__display" data-rest-display>{{ pe.rest_seconds }}</span>
+          <label class="rest-timer__input-label">
+            Rest (s)
+            <input type="number" min="5" max="600" step="5" value="{{ pe.rest_seconds }}" data-rest-seconds-input>
+          </label>
           <button class="btn btn--ghost" type="button" data-rest-start>Start rest</button>
+          <span class="rest-timer__recommended">Recommended: {{ pe.rest_seconds }}s</span>
         </div>
 
         <form method="post" action="{% url 'workouts:log_set' session.id ex.id %}" class="set-log-form">

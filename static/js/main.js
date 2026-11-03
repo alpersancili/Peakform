@@ -11,16 +11,24 @@
 })();
 
 /**
- * Rest countdown timers. Any element with [data-rest-timer] and a
- * data-seconds attribute gets a "Start rest" button that counts down and
- * flashes when it hits zero. Purely client-side; nothing is sent to the
- * server, so it works offline and needs no page reload.
+ * Rest countdown timers. Any element with [data-rest-timer] gets a
+ * "Start rest" button that counts down and flashes when it hits zero.
+ * The duration comes from a [data-rest-seconds-input] number field,
+ * pre-filled with the goal-calculated recommended rest (shown alongside
+ * as a label, never hidden) but editable before starting - some people
+ * genuinely need more or less than the recommendation, and the timer
+ * should work with whatever they actually rested, not silently ignore
+ * it. Purely client-side; nothing is sent to the server.
  */
 (function () {
+  const MIN_SECONDS = 5;
+  const MAX_SECONDS = 600;
+
   document.querySelectorAll("[data-rest-timer]").forEach(function (root) {
-    const totalSeconds = parseInt(root.dataset.seconds, 10) || 60;
+    const recommendedSeconds = parseInt(root.dataset.recommendedSeconds, 10) || 60;
     const button = root.querySelector("[data-rest-start]");
     const display = root.querySelector("[data-rest-display]");
+    const input = root.querySelector("[data-rest-seconds-input]");
     let intervalId = null;
 
     function render(secondsLeft) {
@@ -34,14 +42,20 @@
       intervalId = null;
     }
 
+    function currentDuration() {
+      const raw = input ? parseInt(input.value, 10) : recommendedSeconds;
+      if (!Number.isFinite(raw)) return recommendedSeconds;
+      return Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, raw));
+    }
+
     if (!button || !display) return;
 
-    render(totalSeconds);
+    render(recommendedSeconds);
 
     button.addEventListener("click", function () {
       stop();
       root.classList.remove("rest-timer--done");
-      let secondsLeft = totalSeconds;
+      let secondsLeft = currentDuration();
       render(secondsLeft);
       button.textContent = "Restart";
 

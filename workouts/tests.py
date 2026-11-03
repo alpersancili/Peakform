@@ -294,6 +294,14 @@ class SessionFlowTests(TestCase):
             plan_day=self.training_day, exercise=self.exercise, target_sets=2, target_reps=10, rest_seconds=60
         )
 
+    def test_session_detail_shows_adjustable_rest_timer_with_recommended_default(self):
+        self.client.post(reverse("workouts:session_start", args=[self.training_day.id]))
+        session = WorkoutSession.objects.get(user=self.user)
+        response = self.client.get(reverse("workouts:session_detail", args=[session.id]))
+        self.assertContains(response, 'data-recommended-seconds="60"')
+        self.assertContains(response, 'data-rest-seconds-input')
+        self.assertContains(response, "Recommended: 60s")
+
     def test_starting_a_training_day_creates_session(self):
         response = self.client.post(reverse("workouts:session_start", args=[self.training_day.id]))
         session = WorkoutSession.objects.get(user=self.user)
