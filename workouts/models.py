@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs, urlparse
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -68,6 +70,29 @@ class Exercise(models.Model):
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    @property
+    def embed_url(self):
+        """The video_url converted to an iframe-embeddable YouTube URL.
+
+        video_url is stored as an ordinary watch/share link (the form
+        people actually copy and paste), but YouTube's watch page itself
+        refuses to be framed - only youtube.com/embed/<id> can go in an
+        <iframe>. Falls back to the stored URL unchanged if it isn't a
+        YouTube link we recognize, so non-YouTube embeds aren't broken.
+        """
+        if not self.video_url:
+            return ""
+        parsed = urlparse(self.video_url)
+        host = (parsed.hostname or "").removeprefix("www.").removeprefix("m.")
+        video_id = None
+        if host == "youtube.com" and parsed.path == "/watch":
+            video_id = parse_qs(parsed.query).get("v", [None])[0]
+        elif host == "youtu.be":
+            video_id = parsed.path.lstrip("/")
+        elif host == "youtube.com" and parsed.path.startswith("/embed/"):
+            return self.video_url
+        return f"https://www.youtube.com/embed/{video_id}" if video_id else self.video_url
 
     def suits_equipment(self, available_equipment):
         required = set(self.equipment_required) - {Equipment.NONE}

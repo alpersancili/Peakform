@@ -28,6 +28,37 @@ def make_exercise(name, category, movement_type="reps", difficulty=ExperienceLev
     )
 
 
+class ExerciseEmbedUrlTests(TestCase):
+    def test_blank_video_url_gives_blank_embed_url(self):
+        exercise = make_exercise("No Video", "core")
+        self.assertEqual(exercise.embed_url, "")
+
+    def test_standard_watch_url_converts_to_embed_url(self):
+        exercise = make_exercise("Watch URL", "core")
+        exercise.video_url = "https://www.youtube.com/watch?v=hne3nHGXPRM"
+        self.assertEqual(exercise.embed_url, "https://www.youtube.com/embed/hne3nHGXPRM")
+
+    def test_watch_url_with_extra_query_params_converts(self):
+        exercise = make_exercise("Watch URL Extra", "core")
+        exercise.video_url = "https://www.youtube.com/watch?v=hne3nHGXPRM&t=30s&list=PL123"
+        self.assertEqual(exercise.embed_url, "https://www.youtube.com/embed/hne3nHGXPRM")
+
+    def test_short_youtu_be_url_converts(self):
+        exercise = make_exercise("Short URL", "core")
+        exercise.video_url = "https://youtu.be/hne3nHGXPRM"
+        self.assertEqual(exercise.embed_url, "https://www.youtube.com/embed/hne3nHGXPRM")
+
+    def test_already_embed_url_passes_through_unchanged(self):
+        exercise = make_exercise("Already Embed", "core")
+        exercise.video_url = "https://www.youtube.com/embed/hne3nHGXPRM"
+        self.assertEqual(exercise.embed_url, "https://www.youtube.com/embed/hne3nHGXPRM")
+
+    def test_non_youtube_url_falls_back_unchanged(self):
+        exercise = make_exercise("Other Host", "core")
+        exercise.video_url = "https://example.com/videos/demo.mp4"
+        self.assertEqual(exercise.embed_url, "https://example.com/videos/demo.mp4")
+
+
 class GenerationTests(TestCase):
     def setUp(self):
         self.warmup = make_exercise("Warmup A", "warmup")

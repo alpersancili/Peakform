@@ -21,7 +21,8 @@
         </div>
 
         {% if ex.video_url %}
-          <div class="video-embed"><iframe src="{{ ex.video_url }}" title="{{ ex.name }} demonstration" allowfullscreen></iframe></div>
+          <div class="video-embed"><iframe src="{{ ex.embed_url }}" title="{{ ex.name }} demonstration" allowfullscreen></iframe></div>
+          <p class="dashboard-card__note"><a href="{{ ex.video_url }}" target="_blank" rel="noopener">Watch on YouTube</a></p>
         {% endif %}
 
         <details class="exercise-details">
