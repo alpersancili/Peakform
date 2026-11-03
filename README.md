@@ -23,10 +23,9 @@ logging). 139 automated tests cover the deterministic calculation logic,
 generation algorithms, and server-side permission checks across every
 app.
 
-**Known content gap:** exercise demonstration videos are not yet
-populated (`Exercise.video_url` is left blank for all seeded exercises)
-rather than filled with guessed YouTube links — the UI supports an
-embedded video per exercise once real, verified URLs are curated.
+**Exercise videos:** all 39 seeded exercises have a real YouTube
+demonstration URL, individually sourced (never guessed/fabricated) and
+spot-checked for quality before being added.
 
 **Deferred to a future release** (per the brief's section 5 — not MVP
 scope): AI food photo recognition, calisthenics skill roadmaps, an
