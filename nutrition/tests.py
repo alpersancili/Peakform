@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -22,7 +23,7 @@ from .calculations import (
     calculate_daily_targets,
     calculate_tdee,
 )
-from .models import AIFoodLogRequest, Food, MealEntry, StepLog, WaterLog
+from .models import AIFoodLogRequest, Food, MealEntry, PlannedMeal, StepLog, WaterLog
 
 
 class CalculationTests(TestCase):
@@ -218,6 +219,63 @@ class FoodSearchAndLoggingTests(TestCase):
         entry = MealEntry.objects.create(user=self.user, food=self.food, meal_category="snack", quantity=1)
         self.client.post(reverse("nutrition:meal_entry_delete", args=[entry.id]))
         self.assertFalse(MealEntry.objects.filter(id=entry.id).exists())
+
+
+class MealPlannerTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.food = Food.objects.create(
+            name="Oats", serving_size=40, serving_unit="g",
+            calories=150, protein_g=5.3, carbs_g=27, fat_g=2.7,
+        )
+
+    def test_plan_meal_add_creates_planned_meal(self):
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        response = self.client.post(
+            reverse("nutrition:plan_meal_add", args=[self.food.id]),
+            {"date": tomorrow.isoformat(), "meal_category": "breakfast", "quantity": "2"},
+        )
+        self.assertRedirects(response, reverse("nutrition:meal_planner"))
+        planned = PlannedMeal.objects.get(user=self.user, food=self.food)
+        self.assertEqual(planned.date, tomorrow)
+        self.assertEqual(planned.quantity, 2)
+
+    def test_planner_page_shows_upcoming_days_with_totals(self):
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        PlannedMeal.objects.create(user=self.user, food=self.food, meal_category="breakfast", quantity=2, date=tomorrow)
+        response = self.client.get(reverse("nutrition:meal_planner"))
+        self.assertContains(response, "Oats")
+        day = next(d for d in response.context["days"] if d["date"] == tomorrow)
+        self.assertEqual(day["total_calories"], 300)
+
+    def test_planner_only_shows_own_meals(self):
+        other = User.objects.create_user("other", "other@example.com", "password123!")
+        PlannedMeal.objects.create(user=other, food=self.food, meal_category="breakfast", quantity=1)
+        response = self.client.get(reverse("nutrition:meal_planner"))
+        self.assertNotContains(response, "Oats")
+
+    def test_log_it_creates_meal_entry_and_removes_planned_meal(self):
+        planned = PlannedMeal.objects.create(
+            user=self.user, food=self.food, meal_category="lunch", quantity=2, date=timezone.localdate()
+        )
+        response = self.client.post(reverse("nutrition:plan_meal_log", args=[planned.id]))
+        self.assertRedirects(response, reverse("nutrition:meal_planner"))
+        entry = MealEntry.objects.get(user=self.user, food=self.food)
+        self.assertEqual(entry.calories, 300)
+        self.assertFalse(PlannedMeal.objects.filter(id=planned.id).exists())
+
+    def test_cannot_log_another_users_planned_meal(self):
+        other = User.objects.create_user("other", "other@example.com", "password123!")
+        planned = PlannedMeal.objects.create(user=other, food=self.food, meal_category="lunch", quantity=1)
+        response = self.client.post(reverse("nutrition:plan_meal_log", args=[planned.id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_remove_deletes_planned_meal_without_logging(self):
+        planned = PlannedMeal.objects.create(user=self.user, food=self.food, meal_category="snack", quantity=1)
+        self.client.post(reverse("nutrition:plan_meal_delete", args=[planned.id]))
+        self.assertFalse(PlannedMeal.objects.filter(id=planned.id).exists())
+        self.assertFalse(MealEntry.objects.filter(user=self.user).exists())
 
 
 class WaterAndStepTrackerTests(TestCase):

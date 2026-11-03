@@ -95,6 +95,32 @@ class WaterLog(models.Model):
         return f"{self.user}: {self.amount_ml}ml"
 
 
+class PlannedMeal(models.Model):
+    """A food the user intends to eat on a future (or past) date.
+
+    Separate from MealEntry so planning ahead never affects the diary or
+    calorie totals until the user actually marks it eaten, at which point
+    a MealEntry is created from it (see nutrition.views.plan_meal_log).
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="planned_meals")
+    food = models.ForeignKey(Food, on_delete=models.CASCADE, related_name="planned_meals")
+    meal_category = models.CharField(max_length=10, choices=MealCategory.choices)
+    quantity = models.FloatField(default=1.0, help_text="Multiplier of the food's defined serving size.")
+    date = models.DateField(default=timezone.localdate)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["date", "meal_category"]
+
+    def __str__(self):
+        return f"{self.user}: {self.food.name} planned for {self.date}"
+
+    @property
+    def calories(self):
+        return self.food.calories * self.quantity
+
+
 class AIFoodLogRequest(models.Model):
     """One attempted call to the AI food-logging assistant, for rate limiting.
 

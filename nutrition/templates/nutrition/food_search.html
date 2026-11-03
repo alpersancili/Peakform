@@ -6,7 +6,7 @@
   <div class="container form-page">
     <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
       <h1>Log a food</h1>
-      <p>Search the food catalog, <a href="{% url 'nutrition:custom_food_add' %}">add your own food</a>, or <a href="{% url 'nutrition:ai_food_log' %}">describe it to the AI assistant</a>.</p>
+      <p>Search the food catalog, <a href="{% url 'nutrition:custom_food_add' %}">add your own food</a>, or <a href="{% url 'nutrition:ai_food_log' %}">describe it to the AI assistant</a>. Planning ahead? <a href="{% url 'nutrition:meal_planner' %}">View your meal plan</a>.</p>
     </div>
 
     <form method="get" class="search-bar">
@@ -35,6 +35,18 @@
             </select>
             <input type="number" name="quantity" value="1" min="0.1" step="0.1" aria-label="Servings">
             <button class="btn btn--secondary" type="submit">Add</button>
+          </form>
+          <form method="post" action="{% url 'nutrition:plan_meal_add' food.id %}" class="food-result__form">
+            {% csrf_token %}
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="date" name="date" aria-label="Plan for date" required>
+            <select name="meal_category" aria-label="Meal">
+              {% for value, label in meal_categories %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <input type="number" name="quantity" value="1" min="0.1" step="0.1" aria-label="Servings">
+            <button class="btn btn--ghost" type="submit">Plan it</button>
           </form>
         </li>
       {% endfor %}

@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Food, MealCategory, MealEntry, StepLog
+from .models import Food, MealCategory, MealEntry, PlannedMeal, StepLog
 
 
 class FoodSearchForm(forms.Form):
@@ -23,6 +23,18 @@ class MealEntryForm(forms.ModelForm):
         model = MealEntry
         fields = ["meal_category", "quantity"]
         widgets = {
+            "quantity": forms.NumberInput(attrs={"min": 0.1, "step": 0.1}),
+        }
+
+
+class PlannedMealForm(forms.ModelForm):
+    meal_category = forms.ChoiceField(choices=MealCategory.choices)
+
+    class Meta:
+        model = PlannedMeal
+        fields = ["date", "meal_category", "quantity"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
             "quantity": forms.NumberInput(attrs={"min": 0.1, "step": 0.1}),
         }
 
