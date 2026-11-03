@@ -11,8 +11,8 @@ from nutrition.calculations import calculate_daily_targets
 from nutrition.models import MealEntry, StepLog, WaterLog
 from workouts.models import SessionStatus, WorkoutSession
 
-from .forms import ProgressEntryForm
-from .models import ProgressEntry
+from .forms import ProgressEntryForm, ProgressPhotoForm
+from .models import ProgressEntry, ProgressPhoto
 
 HISTORY_DAYS = 7
 CONSISTENCY_TOLERANCE = 0.15  # within 15% of the calorie target counts as "on target"
@@ -119,6 +119,8 @@ def overview(request):
             request.user, today, WaterLog, "amount_ml", "logged_at__date", profile.water_goal_ml
         ),
         "step_history": _activity_history(request.user, today, StepLog, "step_count", "date", profile.step_goal),
+        "recent_photos": ProgressPhoto.objects.filter(user=request.user)[:4],
+        "photo_count": ProgressPhoto.objects.filter(user=request.user).count(),
     }
     return render(request, "progress/overview.html", context)
 
@@ -130,3 +132,46 @@ def entry_delete(request, entry_id):
         entry.delete()
         messages.success(request, "Entry removed.")
     return redirect("progress:overview")
+
+
+@login_required
+def photo_gallery(request):
+    if request.method == "POST":
+        form = ProgressPhotoForm(request.POST, request.FILES)
+        if form.is_valid():
+            photo = form.save(commit=False)
+            photo.user = request.user
+            photo.save()
+            messages.success(request, "Progress photo uploaded.")
+            return redirect("progress:photos")
+    else:
+        form = ProgressPhotoForm(initial={"date": timezone.localdate()})
+
+    photos = list(ProgressPhoto.objects.filter(user=request.user))
+
+    compare_before = compare_after = None
+    before_id = request.GET.get("before")
+    after_id = request.GET.get("after")
+    if before_id and after_id:
+        compare_before = next((p for p in photos if str(p.id) == before_id), None)
+        compare_after = next((p for p in photos if str(p.id) == after_id), None)
+    elif len(photos) >= 2:
+        compare_before, compare_after = photos[-1], photos[0]
+
+    context = {
+        "form": form,
+        "photos": photos,
+        "compare_before": compare_before,
+        "compare_after": compare_after,
+    }
+    return render(request, "progress/photos.html", context)
+
+
+@login_required
+def photo_delete(request, photo_id):
+    photo = get_object_or_404(ProgressPhoto, id=photo_id, user=request.user)
+    if request.method == "POST":
+        photo.image.delete(save=False)
+        photo.delete()
+        messages.success(request, "Photo removed.")
+    return redirect("progress:photos")

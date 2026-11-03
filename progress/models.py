@@ -1,6 +1,10 @@
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils import timezone
+
+ALLOWED_PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
+MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
 
 
 class ProgressEntry(models.Model):
@@ -29,3 +33,22 @@ class ProgressEntry(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.weight_kg}kg on {self.date}"
+
+
+class ProgressPhoto(models.Model):
+    """A dated physique photo for visual before/after comparison."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="progress_photos")
+    date = models.DateField(default=timezone.localdate)
+    image = models.FileField(
+        upload_to="progress_photos/%Y/%m/",
+        validators=[FileExtensionValidator(ALLOWED_PHOTO_EXTENSIONS)],
+    )
+    notes = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.user}: photo on {self.date}"

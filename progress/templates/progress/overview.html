@@ -75,6 +75,23 @@
           {% endfor %}
         </div>
       </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Progress photos</h2>
+        {% if recent_photos %}
+          <div class="photo-grid">
+            {% for photo in recent_photos %}
+              <div class="photo-card">
+                <img src="{{ photo.image.url }}" alt="Progress photo from {{ photo.date }}">
+              </div>
+            {% endfor %}
+          </div>
+          <p class="dashboard-card__note">{{ photo_count }} photo{{ photo_count|pluralize }} logged.</p>
+        {% else %}
+          <p class="dashboard-card__note">No photos yet.</p>
+        {% endif %}
+        <a class="btn btn--ghost btn--sm" style="margin-top: var(--space-3);" href="{% url 'progress:photos' %}">View &amp; compare</a>
+      </div>
     </div>
 
     <div class="card form-card" style="margin-top: var(--space-6);">

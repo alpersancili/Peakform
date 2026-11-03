@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import ProgressEntry
+from .models import MAX_PHOTO_SIZE_BYTES, ProgressEntry, ProgressPhoto
 
 
 class ProgressEntryForm(forms.ModelForm):
@@ -23,3 +23,19 @@ class ProgressEntryForm(forms.ModelForm):
             "hips_cm": "Hips (cm, optional)",
             "arm_cm": "Arm (cm, optional)",
         }
+
+
+class ProgressPhotoForm(forms.ModelForm):
+    class Meta:
+        model = ProgressPhoto
+        fields = ["date", "image", "notes"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.TextInput(attrs={"placeholder": "Optional note, e.g. lighting, pose"}),
+        }
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        if image and image.size > MAX_PHOTO_SIZE_BYTES:
+            raise forms.ValidationError("Images must be 5MB or smaller.")
+        return image

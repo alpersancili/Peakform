@@ -825,3 +825,38 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
 @media (max-width: 860px) {
   .post-card__actions { gap: var(--space-1); }
 }
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+.photo-card { position: relative; }
+.photo-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-md, 8px);
+  display: block;
+}
+.photo-card__date { font-size: 0.78rem; margin: var(--space-2) 0 0; }
+.photo-card__actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.compare-grid img {
+  width: 100%;
+  max-height: 480px;
+  object-fit: cover;
+  border-radius: var(--radius-md, 8px);
+  display: block;
+}
+.compare-grid__label { font-size: 0.82rem; text-align: center; margin-top: var(--space-2); }
+
+@media (max-width: 860px) {
+  .photo-grid { grid-template-columns: repeat(2, 1fr); }
+  .compare-grid { grid-template-columns: 1fr; }
+}

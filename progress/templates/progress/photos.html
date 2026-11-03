@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Progress photos &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section dashboard">
+  <div class="container">
+    <div class="dashboard__header">
+      <div>
+        <h1>Progress photos</h1>
+        <p>Visual proof the mirror doesn't show day to day. Private to you.</p>
+      </div>
+      <a class="btn btn--ghost" href="{% url 'progress:overview' %}">Back to progress</a>
+    </div>
+
+    <div class="card form-card" style="margin-top: var(--space-6);">
+      <h2 class="dashboard-card__title">Add a photo</h2>
+      <form method="post" enctype="multipart/form-data" class="form-grid">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn--primary" type="submit" style="align-self: end;">Upload photo</button>
+      </form>
+    </div>
+
+    {% if compare_before and compare_after %}
+      <div class="card" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">Before &amp; after</h2>
+        <div class="compare-grid">
+          <div>
+            <img src="{{ compare_before.image.url }}" alt="Photo from {{ compare_before.date }}">
+            <p class="compare-grid__label">{{ compare_before.date }}</p>
+          </div>
+          <div>
+            <img src="{{ compare_after.image.url }}" alt="Photo from {{ compare_after.date }}">
+            <p class="compare-grid__label">{{ compare_after.date }}</p>
+          </div>
+        </div>
+        {% if photos|length > 2 %}
+          <form method="get" class="form-grid" style="margin-top: var(--space-4);">
+            <div class="field">
+              <label for="before-select">Before</label>
+              <select id="before-select" name="before">
+                {% for photo in photos %}
+                  <option value="{{ photo.id }}" {% if photo == compare_before %}selected{% endif %}>{{ photo.date }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="after-select">After</label>
+              <select id="after-select" name="after">
+                {% for photo in photos %}
+                  <option value="{{ photo.id }}" {% if photo == compare_after %}selected{% endif %}>{{ photo.date }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class="btn btn--ghost" type="submit" style="align-self: end;">Compare</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if photos %}
+      <div class="card" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">All photos</h2>
+        <div class="photo-grid">
+          {% for photo in photos %}
+            <div class="photo-card">
+              <img src="{{ photo.image.url }}" alt="Progress photo from {{ photo.date }}">
+              <p class="photo-card__date">{{ photo.date }}{% if photo.notes %} &middot; {{ photo.notes }}{% endif %}</p>
+              <div class="photo-card__actions">
+                <form method="post" action="{% url 'progress:photo_delete' photo.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn--ghost btn--sm" type="submit">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <p class="dashboard-card__note" style="margin-top: var(--space-6);">No photos yet &mdash; upload your first one above.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
