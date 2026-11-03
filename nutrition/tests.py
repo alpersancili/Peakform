@@ -13,6 +13,7 @@ from .ai_client import (
     GeminiRequestError,
     GeminiResponseError,
     parse_food_description,
+    parse_food_photo,
 )
 from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import (
@@ -331,6 +332,50 @@ class GeminiClientTests(TestCase):
                 parse_food_description("an apple", api_key="test-key")
 
 
+class GeminiPhotoClientTests(TestCase):
+    def test_raises_configuration_error_without_api_key(self):
+        with self.assertRaises(GeminiConfigurationError):
+            parse_food_photo(b"fake-bytes", "image/jpeg", api_key="")
+
+    def test_raises_on_empty_photo(self):
+        with self.assertRaises(GeminiResponseError):
+            parse_food_photo(b"", "image/jpeg", api_key="test-key")
+
+    def test_raises_on_disallowed_mime_type(self):
+        with self.assertRaises(GeminiResponseError):
+            parse_food_photo(b"fake-bytes", "application/pdf", api_key="test-key")
+
+    def test_raises_on_oversized_photo(self):
+        with self.assertRaises(GeminiResponseError):
+            parse_food_photo(b"x" * (9 * 1024 * 1024), "image/jpeg", api_key="test-key")
+
+    @patch("nutrition.ai_client._call_gemini_vision")
+    def test_happy_path_returns_validated_items(self, mock_call):
+        mock_call.return_value = _gemini_envelope(
+            [
+                {
+                    "name": "Grilled chicken",
+                    "quantity": 1,
+                    "unit": "breast",
+                    "meal_category": "lunch",
+                    "calories": 280,
+                    "protein_g": 50,
+                    "carbs_g": 0,
+                    "fat_g": 6,
+                }
+            ]
+        )
+        items = parse_food_photo(b"fake-bytes", "image/jpeg", api_key="test-key")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].name, "Grilled chicken")
+        mock_call.assert_called_once()
+
+    @patch("nutrition.ai_client._call_gemini_vision", side_effect=GeminiRequestError("down"))
+    def test_network_failure_propagates_as_gemini_request_error(self, mock_call):
+        with self.assertRaises(GeminiRequestError):
+            parse_food_photo(b"fake-bytes", "image/jpeg", api_key="test-key")
+
+
 class AIRateLimitTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
@@ -434,3 +479,65 @@ class AIFoodLogViewTests(TestCase):
 
         self.client.post(reverse("nutrition:ai_food_log_review"), {})
         self.assertFalse(MealEntry.objects.filter(user=self.user).exists())
+
+
+@override_settings(GEMINI_API_KEY="test-key")
+class AIFoodPhotoViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+
+    def _photo_file(self, content=b"fake-image-bytes"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile("meal.jpg", content, content_type="image/jpeg")
+
+    @override_settings(GEMINI_API_KEY="")
+    def test_form_shows_disabled_message_without_api_key(self):
+        response = self.client.get(reverse("nutrition:ai_food_photo"))
+        self.assertContains(response, "isn't configured")
+
+    def test_missing_photo_shows_error_and_does_not_call_gemini(self):
+        with patch("nutrition.views.parse_food_photo") as mock_parse:
+            response = self.client.post(reverse("nutrition:ai_food_photo"), {}, follow=True)
+        mock_parse.assert_not_called()
+        self.assertContains(response, "Choose a photo")
+
+    def test_gemini_error_shows_message_and_redirects_back(self):
+        with patch("nutrition.views.parse_food_photo", side_effect=GeminiResponseError("bad output")):
+            response = self.client.post(
+                reverse("nutrition:ai_food_photo"), {"photo": self._photo_file()}, follow=True
+            )
+        self.assertContains(response, "bad output")
+
+    def test_successful_parse_redirects_to_review(self):
+        from .ai_client import ParsedFoodItem
+
+        item = ParsedFoodItem(
+            name="Omelette", quantity=1, unit="serving", meal_category="breakfast",
+            calories=220, protein_g=14, carbs_g=2, fat_g=17,
+        )
+        with patch("nutrition.views.parse_food_photo", return_value=[item]):
+            response = self.client.post(reverse("nutrition:ai_food_photo"), {"photo": self._photo_file()})
+        self.assertRedirects(response, reverse("nutrition:ai_food_log_review"))
+        self.assertEqual(self.client.session[views_module.AI_SESSION_KEY][0]["name"], "Omelette")
+
+    def test_rate_limit_exceeded_blocks_call_to_gemini(self):
+        for _ in range(20):
+            AIFoodLogRequest.objects.create(user=self.user)
+        with patch("nutrition.views.parse_food_photo") as mock_parse:
+            response = self.client.post(
+                reverse("nutrition:ai_food_photo"), {"photo": self._photo_file()}, follow=True
+            )
+        mock_parse.assert_not_called()
+        self.assertContains(response, "limit")
+
+    def test_oversized_photo_rejected_without_calling_gemini(self):
+        with patch("nutrition.views.parse_food_photo") as mock_parse:
+            response = self.client.post(
+                reverse("nutrition:ai_food_photo"),
+                {"photo": self._photo_file(content=b"x" * (9 * 1024 * 1024))},
+                follow=True,
+            )
+        mock_parse.assert_not_called()
+        self.assertContains(response, "too large")

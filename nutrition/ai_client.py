@@ -8,6 +8,7 @@ anywhere near the database, and a malformed or unreachable API never
 raises past this module as anything but one of the typed errors below.
 """
 
+import base64
 import json
 import urllib.error
 import urllib.request
@@ -25,6 +26,8 @@ MAX_DESCRIPTION_LENGTH = 1000
 MAX_ITEM_CALORIES = 5000
 MAX_ITEM_QUANTITY = 100
 REQUEST_TIMEOUT_SECONDS = 15
+MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024
+ALLOWED_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 VALID_MEAL_CATEGORIES = {choice for choice, _ in MealCategory.choices}
 
@@ -58,6 +61,19 @@ PROMPT_INSTRUCTIONS = (
     "not mention any food, return an empty array.\n\nDescription: "
 )
 
+PHOTO_PROMPT_INSTRUCTIONS = (
+    "You are a nutrition estimation assistant for a fitness app. The user has "
+    "photographed a meal. Identify each distinct food item visible in the "
+    "photo and estimate its portion size from visual cues (plate size, "
+    "utensils, packaging). Break the meal into one entry per distinct food "
+    "item. `quantity` is a numeric multiplier of one serving of `unit` (e.g. "
+    "quantity=1, unit='cup'). Guess `meal_category` from how the food looks; "
+    "default to 'snack' if genuinely unclear. All nutrition fields are totals "
+    "for the estimated portion, in kilocalories and grams. These are rough "
+    "visual estimates, so prefer plausible round numbers over false "
+    "precision. If no food is visible in the photo, return an empty array."
+)
+
 
 class GeminiError(Exception):
     """Base class for all errors raised by this module."""
@@ -87,12 +103,12 @@ class ParsedFoodItem:
     fat_g: float
 
 
-def _call_gemini(prompt, *, api_key, model):
-    """Issue the HTTP request to Gemini. Isolated so tests can mock it."""
+def _post_to_gemini(parts, *, api_key, model):
+    """Issue the HTTP request to Gemini for the given content parts."""
     url = GEMINI_ENDPOINT_TEMPLATE.format(model=model, key=api_key)
     body = json.dumps(
         {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"parts": parts}],
             "generationConfig": {
                 "responseMimeType": "application/json",
                 "responseSchema": RESPONSE_SCHEMA,
@@ -111,6 +127,20 @@ def _call_gemini(prompt, *, api_key, model):
         raise GeminiRequestError("Could not reach the Gemini API.") from exc
     except json.JSONDecodeError as exc:
         raise GeminiResponseError("Gemini API response was not valid JSON.") from exc
+
+
+def _call_gemini(prompt, *, api_key, model):
+    """Issue a text-only request to Gemini. Isolated so tests can mock it."""
+    return _post_to_gemini([{"text": prompt}], api_key=api_key, model=model)
+
+
+def _call_gemini_vision(prompt, image_bytes, mime_type, *, api_key, model):
+    """Issue an image+text request to Gemini. Isolated so tests can mock it."""
+    parts = [
+        {"text": prompt},
+        {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
+    ]
+    return _post_to_gemini(parts, api_key=api_key, model=model)
 
 
 def _extract_text(envelope):
@@ -181,6 +211,33 @@ def parse_food_description(description, *, api_key=None, model=None):
     prompt = PROMPT_INSTRUCTIONS + description
 
     envelope = _call_gemini(prompt, api_key=api_key, model=model)
+    return _parse_items_envelope(envelope)
+
+
+def parse_food_photo(image_bytes, mime_type, *, api_key=None, model=None):
+    """Turn a meal photo into a list of ParsedFoodItem.
+
+    Raises GeminiConfigurationError, GeminiRequestError, or
+    GeminiResponseError; never returns a partially-validated item.
+    """
+    api_key = api_key if api_key is not None else settings.GEMINI_API_KEY
+    if not api_key:
+        raise GeminiConfigurationError("The AI assistant is not configured on this server.")
+
+    if not image_bytes:
+        raise GeminiResponseError("Please upload a photo of your meal.")
+    if len(image_bytes) > MAX_PHOTO_SIZE_BYTES:
+        raise GeminiResponseError("That photo is too large. Please use one under 8MB.")
+    if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
+        raise GeminiResponseError("Please upload a JPEG, PNG, or WebP photo.")
+
+    model = model or getattr(settings, "GEMINI_MODEL", "gemini-3.1-flash-lite")
+
+    envelope = _call_gemini_vision(PHOTO_PROMPT_INSTRUCTIONS, image_bytes, mime_type, api_key=api_key, model=model)
+    return _parse_items_envelope(envelope)
+
+
+def _parse_items_envelope(envelope):
     text = _extract_text(envelope)
 
     try:

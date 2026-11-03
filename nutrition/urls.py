@@ -15,5 +15,6 @@ urlpatterns = [
     path("water/<int:log_id>/delete/", views.water_delete, name="water_delete"),
     path("steps/set/", views.step_set, name="step_set"),
     path("ai/", views.ai_food_log, name="ai_food_log"),
+    path("ai/photo/", views.ai_food_photo, name="ai_food_photo"),
     path("ai/review/", views.ai_food_log_review, name="ai_food_log_review"),
 ]

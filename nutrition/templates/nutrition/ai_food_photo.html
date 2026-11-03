@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Scan a meal photo &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Scan a meal photo</h1>
+      <p>Snap or upload a photo of your meal. You'll review and confirm estimated nutrition before anything is logged.</p>
+    </div>
+
+    {% if not configured %}
+      <div class="card dashboard__prompt">
+        <p>The AI assistant isn't configured on this server yet. You can still <a href="{% url 'nutrition:food_search' %}">log food by searching</a>.</p>
+      </div>
+    {% else %}
+      <form class="card form-card" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label for="photo">Photo of your meal</label>
+          <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" required>
+        </div>
+        <button class="btn btn--primary btn--lg" type="submit">Estimate nutrition</button>
+        <p class="dashboard-card__note">{{ remaining_today }} AI requests left today. Shared with AI food-log-by-text.</p>
+      </form>
+    {% endif %}
+
+    <p class="dashboard-card__note" style="margin-top: var(--space-4);">
+      Prefer typing? <a href="{% url 'nutrition:ai_food_log' %}">Describe your meal instead</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

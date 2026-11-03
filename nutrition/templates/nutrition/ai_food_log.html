@@ -24,6 +24,10 @@
         <p class="dashboard-card__note">{{ remaining_today }} AI requests left today.</p>
       </form>
     {% endif %}
+
+    <p class="dashboard-card__note" style="margin-top: var(--space-4);">
+      Prefer a photo? <a href="{% url 'nutrition:ai_food_photo' %}">Scan your meal instead</a>.
+    </p>
   </div>
 </section>
 {% endblock %}

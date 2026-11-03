@@ -12,7 +12,7 @@ from django.utils import timezone
 from motivation.badges import evaluate_badges
 from motivation.streaks import calculate_current_streak
 
-from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description
+from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description, parse_food_photo
 from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import calculate_bmi, calculate_daily_targets
 from .forms import CustomFoodForm, MealEntryForm, StepLogForm, WaterQuickAddForm
@@ -250,6 +250,65 @@ def ai_food_log(request):
     return render(
         request,
         "nutrition/ai_food_log.html",
+        {"configured": configured, "remaining_today": requests_remaining_today(request.user)},
+    )
+
+
+@login_required
+def ai_food_photo(request):
+    configured = bool(settings.GEMINI_API_KEY)
+
+    if request.method == "POST":
+        if not configured:
+            messages.error(request, "The AI assistant isn't configured on this server yet.")
+            return redirect("nutrition:ai_food_photo")
+
+        photo = request.FILES.get("photo")
+        if not photo:
+            messages.error(request, "Choose a photo of your meal first.")
+            return redirect("nutrition:ai_food_photo")
+        if photo.size > 8 * 1024 * 1024:
+            messages.error(request, "That photo is too large. Please use one under 8MB.")
+            return redirect("nutrition:ai_food_photo")
+
+        try:
+            record_attempt_or_raise(request.user)
+        except RateLimitExceeded as exc:
+            minutes = max(1, int(exc.retry_after.total_seconds() // 60))
+            messages.error(request, f"You've hit today's AI assistant limit. Try again in about {minutes} minutes.")
+            return redirect("nutrition:ai_food_photo")
+
+        try:
+            items = parse_food_photo(photo.read(), photo.content_type)
+        except GeminiConfigurationError:
+            messages.error(request, "The AI assistant isn't configured on this server yet.")
+            return redirect("nutrition:ai_food_photo")
+        except GeminiError as exc:
+            messages.error(request, str(exc))
+            return redirect("nutrition:ai_food_photo")
+
+        if not items:
+            messages.error(request, "Couldn't identify any food in that photo. Try a clearer shot.")
+            return redirect("nutrition:ai_food_photo")
+
+        request.session[AI_SESSION_KEY] = [
+            {
+                "name": item.name,
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "meal_category": item.meal_category,
+                "calories": item.calories,
+                "protein_g": item.protein_g,
+                "carbs_g": item.carbs_g,
+                "fat_g": item.fat_g,
+            }
+            for item in items
+        ]
+        return redirect("nutrition:ai_food_log_review")
+
+    return render(
+        request,
+        "nutrition/ai_food_photo.html",
         {"configured": configured, "remaining_today": requests_remaining_today(request.user)},
     )
 
