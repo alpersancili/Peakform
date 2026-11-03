@@ -73,6 +73,10 @@ class GenerationTests(TestCase):
             "Handstand", "skill", movement_type="hold", hold=20,
             difficulty=ExperienceLevel.ADVANCED, goals=[PrimaryGoal.SKILLS],
         )
+        self.pull_skill_tagged = make_exercise(
+            "Front Lever Tuck", "pull", movement_type="hold", hold=10,
+            difficulty=ExperienceLevel.ADVANCED, goals=[PrimaryGoal.SKILLS],
+        )
         self.all_exercises = list(Exercise.objects.all())
 
     def test_training_days_capped_at_six(self):
@@ -160,6 +164,43 @@ class GenerationTests(TestCase):
         warmup = next(pe for pe in strength_days[0].exercises if pe.exercise.name == "Warmup A")
         self.assertEqual(warmup.target_reps, self.warmup.default_reps)
         self.assertEqual(warmup.rest_seconds, self.warmup.default_rest_seconds)
+
+    def test_push_day_never_includes_pull_exercises(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 3, 90)
+        push_day = next(d for d in days if d.label == "Push")
+        categories = {pe.exercise.category for pe in push_day.exercises}
+        self.assertNotIn("pull", categories)
+
+    def test_pull_day_never_includes_push_exercises(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 3, 90)
+        pull_day = next(d for d in days if d.label == "Pull")
+        categories = {pe.exercise.category for pe in pull_day.exercises}
+        self.assertNotIn("push", categories)
+
+    def test_legs_day_includes_core_work(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.GENERAL_FITNESS, 3, 90)
+        legs_day = next(d for d in days if d.label == "Legs")
+        names = [pe.exercise.name for pe in legs_day.exercises]
+        self.assertIn("Plank", names)
+
+    def test_skill_category_never_added_to_pull_or_legs_days(self):
+        # "Handstand" is push-dominant (skill category) - it should only
+        # ever be eligible on a push-type day, never pull or legs, even
+        # when the user's goal is Skills.
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 3, 90)
+        pull_day = next(d for d in days if d.label == "Pull")
+        legs_day = next(d for d in days if d.label == "Legs")
+        self.assertNotIn("Handstand", [pe.exercise.name for pe in pull_day.exercises])
+        self.assertNotIn("Handstand", [pe.exercise.name for pe in legs_day.exercises])
+
+    def test_pull_dominant_skill_exercise_sequenced_first_on_pull_day(self):
+        # Front Lever Tuck is catalogued as "pull" (it's also valid pure
+        # pulling-strength work), not "skill" - but it's still skills-goal
+        # tagged and should still go first on a pull day while fresh.
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 3, 90)
+        pull_day = next(d for d in days if d.label == "Pull")
+        main_exercises = [pe for pe in pull_day.exercises if pe.exercise.category not in ("warmup", "cooldown")]
+        self.assertEqual(main_exercises[0].exercise.name, "Front Lever Tuck")
 
     def test_strength_goal_fits_fewer_exercises_than_endurance_in_same_duration(self):
         # Strength's longer rest (1.6x) and extra set per exercise take much

@@ -19,13 +19,21 @@ MINUTES_PER_EXERCISE = 6  # rough estimate: sets x (work + rest)
 WARMUP_EXERCISE_COUNT = 2
 COOLDOWN_EXERCISE_COUNT = 1
 
-# Day-label -> movement categories drawn from, by split type.
+# Day-label -> movement categories drawn from, by split type. Push and
+# Pull are never combined into one session except inside "Upper Body"
+# (used only at 2 and 4 days/week, where there isn't enough frequency
+# to dedicate a whole day to each and still train legs) - 3+ days/week
+# always get a dedicated Push day and a dedicated Pull day, matching
+# how real calisthenics push/pull/legs programming is actually
+# structured. "Legs" always means legs AND core/abs together (a static
+# hold like an L-sit pairs naturally with a leg day), never push or
+# pull.
 SPLIT_BY_DAY_COUNT = {
     1: ["Full Body"],
-    2: ["Full Body", "Full Body"],
-    3: ["Full Body", "Full Body", "Full Body"],
+    2: ["Upper Body", "Lower Body"],
+    3: ["Push", "Pull", "Legs"],
     4: ["Upper Body", "Lower Body", "Upper Body", "Lower Body"],
-    5: ["Push", "Pull", "Legs", "Upper Body", "Lower Body"],
+    5: ["Push", "Pull", "Push", "Pull", "Legs"],
     6: ["Push", "Pull", "Legs", "Push", "Pull", "Legs"],
 }
 
@@ -35,16 +43,24 @@ SPLIT_BY_DAY_COUNT = {
 # a day of recovery before being trained again - three Full Body days
 # back-to-back-to-back with four rest days afterward is worse recovery
 # management than the same three days spread out, even though both use
-# "3 training days." 5 and 6 day splits are already a standard
-# Mon-Fri/Mon-Sat pattern and don't need spreading.
+# "3 training days." 6 days/week is already a standard Mon-Sat pattern
+# and doesn't need spreading.
 TRAINING_DAY_INDICES = {
     1: [0],
     2: [0, 3],  # Mon, Thu
     3: [0, 2, 4],  # Mon, Wed, Fri
     4: [0, 1, 3, 4],  # Mon, Tue, Thu, Fri - a day of rest after each 2-day block
-    5: [0, 1, 2, 3, 4],
+    5: [0, 1, 3, 4, 5],  # Mon, Tue, Thu, Fri, Sat - rest mid-week and Sunday
     6: [0, 1, 2, 3, 4, 5],
 }
+
+# Skill-category exercises (static holds like handstand/planche
+# progressions) are all push/pressing-dominant in this library - the
+# pull-dominant equivalents (front lever family) are already their own
+# "pull" category exercises and so only ever appear on pull days
+# naturally. Only add the skill category to push-type days, so a
+# planche progression can never land on a pull or legs day.
+SKILLS_GOAL_LABELS = {"Push", "Upper Body", "Full Body"}
 
 # How each goal actually changes the prescription for main-block exercises
 # (never warm-up/cool-down, which stay standardized). Multipliers on the
@@ -81,9 +97,14 @@ LABEL_CATEGORIES = {
     "Full Body": [MovementCategory.PUSH, MovementCategory.PULL, MovementCategory.LEGS, MovementCategory.CORE],
     "Upper Body": [MovementCategory.PUSH, MovementCategory.PULL, MovementCategory.CORE],
     "Lower Body": [MovementCategory.LEGS, MovementCategory.CORE],
-    "Push": [MovementCategory.PUSH, MovementCategory.CORE],
+    # Push days stay pure push work (plus push-dominant skill holds, see
+    # SKILLS_GOAL_LABELS below) - no core filler mixed in, matching how
+    # a dedicated push day is actually programmed.
+    "Push": [MovementCategory.PUSH],
+    # Pull days commonly pair naturally with hanging ab/core work
+    # (hanging leg raises etc. use the same bar), so core stays here.
     "Pull": [MovementCategory.PULL, MovementCategory.CORE],
-    "Legs": [MovementCategory.LEGS],
+    "Legs": [MovementCategory.LEGS, MovementCategory.CORE],
 }
 
 
@@ -185,7 +206,7 @@ def generate_plan_days(all_exercises, experience_level, equipment, goal, trainin
         split_position = training_indices.index(day_index)
         label = split[split_position]
         categories = LABEL_CATEGORIES[label]
-        if goal == PrimaryGoal.SKILLS:
+        if goal == PrimaryGoal.SKILLS and label in SKILLS_GOAL_LABELS:
             categories = categories + [MovementCategory.SKILL]
         candidates = _exercises_for_category(all_exercises, categories, experience_level, equipment, goal)
 
@@ -198,8 +219,18 @@ def generate_plan_days(all_exercises, experience_level, equipment, goal, trainin
         # Skill work (handstands, planche/front lever progressions) goes
         # first among the main exercises, while the nervous system is
         # still fresh from the warm-up - fatigued skill practice mostly
-        # just reinforces bad form rather than building the skill.
-        selected = sorted(selected, key=lambda ex: 0 if ex.category == MovementCategory.SKILL else 1)
+        # just reinforces bad form rather than building the skill. This
+        # covers both the "skill" category itself (handstand/planche,
+        # which are push-dominant) and any exercise explicitly tagged
+        # for the skills goal regardless of its push/pull/legs/core
+        # category (front lever progressions are catalogued as "pull"
+        # since they're also valid pure pulling-strength work, but are
+        # just as much a skill that deserves to come first when fresh).
+        def _skill_priority(ex):
+            is_skill_work = ex.category == MovementCategory.SKILL or PrimaryGoal.SKILLS in ex.primary_goal_tags
+            return 0 if is_skill_work else 1
+
+        selected = sorted(selected, key=_skill_priority)
 
         planned_day = PlannedDay(day_index=day_index, label=label, is_rest_day=False)
         for warmup_ex in warmup_pool[:WARMUP_EXERCISE_COUNT]:
