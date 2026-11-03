@@ -126,6 +126,59 @@ class GenerationTests(TestCase):
             self.assertIn("Warmup A", names)
             self.assertIn("Cooldown A", names)
 
+    def test_three_day_plan_spreads_training_days_instead_of_clustering(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45)
+        training_indices = {d.day_index for d in days if not d.is_rest_day}
+        self.assertEqual(training_indices, {0, 2, 4})
+
+    def test_two_day_plan_spreads_training_days(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 2, 45)
+        training_indices = {d.day_index for d in days if not d.is_rest_day}
+        self.assertEqual(training_indices, {0, 3})
+
+    def test_four_day_plan_spreads_training_days(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 4, 45)
+        training_indices = {d.day_index for d in days if not d.is_rest_day}
+        self.assertEqual(training_indices, {0, 1, 3, 4})
+
+    def test_strength_goal_prescribes_fewer_reps_and_longer_rest(self):
+        strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.STRENGTH, 1, 90)
+        endurance_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.ENDURANCE, 1, 90)
+
+        strength_push = next(pe for pe in strength_days[0].exercises if pe.exercise.name == "Easy Push")
+        endurance_push = next(pe for pe in endurance_days[0].exercises if pe.exercise.name == "Easy Push")
+
+        self.assertLess(strength_push.target_reps, endurance_push.target_reps)
+        self.assertGreater(strength_push.rest_seconds, endurance_push.rest_seconds)
+        # Unscaled baseline for reference: both started from the same exercise default.
+        self.assertEqual(self.push_beginner.default_reps, 10)
+        self.assertEqual(strength_push.target_reps, 6)
+        self.assertEqual(endurance_push.target_reps, 16)
+
+    def test_warmup_and_cooldown_are_not_goal_scaled(self):
+        strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.STRENGTH, 1, 90)
+        warmup = next(pe for pe in strength_days[0].exercises if pe.exercise.name == "Warmup A")
+        self.assertEqual(warmup.target_reps, self.warmup.default_reps)
+        self.assertEqual(warmup.rest_seconds, self.warmup.default_rest_seconds)
+
+    def test_strength_goal_fits_fewer_exercises_than_endurance_in_same_duration(self):
+        # Strength's longer rest (1.6x) and extra set per exercise take much
+        # longer per exercise than endurance's shorter rest (0.6x) - packing
+        # the same exercise count into both would make a "60-minute"
+        # strength session actually take well over two hours of rest alone.
+        strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.STRENGTH, 1, 60)
+        endurance_days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.ENDURANCE, 1, 60)
+
+        strength_main = [pe for pe in strength_days[0].exercises if pe.exercise.category not in ("warmup", "cooldown")]
+        endurance_main = [pe for pe in endurance_days[0].exercises if pe.exercise.category not in ("warmup", "cooldown")]
+        self.assertLess(len(strength_main), len(endurance_main))
+
+    def test_skill_exercise_sequenced_before_other_main_exercises(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 1, 90)
+        day = days[0]
+        main_exercises = [pe for pe in day.exercises if pe.exercise.category not in ("warmup", "cooldown")]
+        self.assertEqual(main_exercises[0].exercise.name, "Handstand")
+
 
 class ProgressionTests(TestCase):
     def setUp(self):
