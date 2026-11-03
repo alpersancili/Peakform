@@ -5,6 +5,7 @@ and reproducible.
 
 from .models import Badge, BadgeCriteria, UserBadge
 from .streaks import calculate_current_streak
+from .xp import XP_PER_BADGE, award_xp
 
 
 def _total_workouts(user):
@@ -40,6 +41,7 @@ def evaluate_badges(user):
             stat_cache[badge.criteria_type] = calculator(user)
         if stat_cache[badge.criteria_type] >= badge.threshold:
             UserBadge.objects.create(user=user, badge=badge)
+            award_xp(user, XP_PER_BADGE, f"Badge: {badge.name}")
             newly_earned.append(badge)
 
     return newly_earned

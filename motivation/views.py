@@ -3,14 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
 from .badges import evaluate_badges
+from .challenges import challenge_progress, evaluate_challenges
 from .models import Badge, UserBadge
 from .streaks import calculate_current_streak, weekly_workout_progress
+from .xp import level_progress
 
 
 @login_required
 def badges_list(request):
     for badge in evaluate_badges(request.user):
         messages.success(request, f"New badge: {badge.name}!")
+    for challenge in evaluate_challenges(request.user):
+        messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
 
     earned = UserBadge.objects.filter(user=request.user).select_related("badge")
     earned_badge_ids = {ub.badge_id for ub in earned}
@@ -25,5 +29,7 @@ def badges_list(request):
         "rows": rows,
         "streak": calculate_current_streak(request.user),
         "weekly_progress": weekly_workout_progress(request.user),
+        "level": level_progress(request.user),
+        "challenges": challenge_progress(request.user),
     }
     return render(request, "motivation/badges_list.html", context)

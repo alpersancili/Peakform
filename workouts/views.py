@@ -6,6 +6,8 @@ from django.utils import timezone
 
 from accounts.models import Equipment, ExperienceLevel
 from motivation.badges import evaluate_badges
+from motivation.challenges import evaluate_challenges
+from motivation.xp import XP_PER_COMPLETED_WORKOUT, award_xp
 
 from .forms import PlanGenerateForm, RecoveryNoteForm, SetLogForm
 from .generation import generate_plan_days, suggest_progression
@@ -174,6 +176,8 @@ def session_complete(request, session_id):
                     verb = "Increased" if suggestion.direction == "increase" else "Eased back"
                     progression_notes.append(f"{verb} target for {plan_exercise.exercise.name}.")
 
+        award_xp(request.user, XP_PER_COMPLETED_WORKOUT, "Completed a workout")
+
         messages.success(request, "Workout complete. Nice work!")
         for exercise, value in detect_new_records(request.user, session):
             unit = "s hold" if exercise.movement_type == MovementType.HOLD else " reps"
@@ -182,6 +186,8 @@ def session_complete(request, session_id):
             messages.info(request, note)
         for badge in evaluate_badges(request.user):
             messages.success(request, f"New badge: {badge.name}!")
+        for challenge in evaluate_challenges(request.user):
+            messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
 
     return redirect("workouts:session_history")
 

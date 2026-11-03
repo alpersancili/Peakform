@@ -10,8 +10,10 @@ from nutrition.models import Food, MealEntry
 from workouts.models import SessionStatus, WorkoutPlan, WorkoutPlanDay, WorkoutSession
 
 from .badges import evaluate_badges
-from .models import Badge, BadgeCriteria, UserBadge
+from .challenges import challenge_progress, evaluate_challenges
+from .models import Badge, BadgeCriteria, Challenge, ChallengeCriteria, UserBadge
 from .streaks import calculate_current_streak, weekly_workout_progress
+from .xp import award_xp, level_progress, total_xp
 
 
 def make_plan_with_rest_days(user, rest_weekdays, training_days_per_week=3):
@@ -136,6 +138,82 @@ class BadgeEvaluationTests(TestCase):
         UserBadge.objects.create(user=self.user, badge=badge)
         evaluate_badges(self.user)
         self.assertTrue(UserBadge.objects.filter(user=self.user, badge=badge).exists())
+
+
+class XPTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+
+    def test_total_xp_sums_events(self):
+        award_xp(self.user, 10, "First")
+        award_xp(self.user, 25, "Second")
+        self.assertEqual(total_xp(self.user), 35)
+
+    def test_total_xp_zero_with_no_events(self):
+        self.assertEqual(total_xp(self.user), 0)
+
+    def test_zero_or_negative_amount_is_not_awarded(self):
+        award_xp(self.user, 0, "Nothing")
+        award_xp(self.user, -5, "Invalid")
+        self.assertEqual(total_xp(self.user), 0)
+
+    def test_level_progress_starts_at_level_one(self):
+        progress = level_progress(self.user)
+        self.assertEqual(progress["level"], 1)
+        self.assertEqual(progress["xp"], 0)
+
+    def test_level_increases_every_hundred_xp(self):
+        award_xp(self.user, 250, "Big award")
+        progress = level_progress(self.user)
+        self.assertEqual(progress["level"], 3)
+        self.assertEqual(progress["xp_into_level"], 50)
+
+    def test_earning_a_badge_awards_xp(self):
+        Badge.objects.create(slug="first-workout", name="First Steps", description="d",
+                              criteria_type=BadgeCriteria.TOTAL_WORKOUTS, threshold=1)
+        WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        evaluate_badges(self.user)
+        self.assertEqual(total_xp(self.user), 25)
+
+
+class ChallengeEvaluationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.challenge = Challenge.objects.create(
+            slug="weekly-three-workouts", name="Triple Threat", description="d",
+            criteria_type=ChallengeCriteria.WEEKLY_WORKOUTS, target=3, xp_reward=30,
+        )
+
+    def test_not_completed_below_target(self):
+        WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        self.assertEqual(evaluate_challenges(self.user), [])
+
+    def test_completed_when_target_met_and_awards_xp(self):
+        for _ in range(3):
+            WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        newly_completed = evaluate_challenges(self.user)
+        self.assertEqual([c.slug for c in newly_completed], ["weekly-three-workouts"])
+        self.assertEqual(total_xp(self.user), 30)
+
+    def test_does_not_re_complete_same_week(self):
+        for _ in range(3):
+            WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        evaluate_challenges(self.user)
+        self.assertEqual(evaluate_challenges(self.user), [])
+        self.assertEqual(total_xp(self.user), 30)
+
+    def test_sessions_outside_this_week_do_not_count(self):
+        last_week = timezone.localdate() - timedelta(days=8)
+        for _ in range(3):
+            WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED, date=last_week)
+        self.assertEqual(evaluate_challenges(self.user), [])
+
+    def test_challenge_progress_reports_current_and_target(self):
+        WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        rows = challenge_progress(self.user)
+        self.assertEqual(rows[0]["current"], 1)
+        self.assertEqual(rows[0]["target"], 3)
+        self.assertFalse(rows[0]["completed"])
 
 
 class BadgesListViewTests(TestCase):

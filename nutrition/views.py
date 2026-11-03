@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from motivation.badges import evaluate_badges
+from motivation.challenges import evaluate_challenges
 from motivation.streaks import calculate_current_streak
 
 from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description, parse_food_photo
@@ -122,6 +123,8 @@ def add_meal_entry(request, food_id):
             messages.success(request, f"Logged {food.name}.")
             for badge in evaluate_badges(request.user):
                 messages.success(request, f"New badge: {badge.name}!")
+            for challenge in evaluate_challenges(request.user):
+                messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
             return redirect("nutrition:dashboard")
         messages.error(request, "Couldn't log that food. Check the quantity and try again.")
     return redirect(back_to_search)
@@ -175,6 +178,8 @@ def water_add(request):
                 WaterLog.objects.create(user=request.user, amount_ml=form.cleaned_data["amount_ml"])
         else:
             WaterLog.objects.create(user=request.user, amount_ml=request.user.profile.water_serving_ml)
+        for challenge in evaluate_challenges(request.user):
+            messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
     return redirect("nutrition:dashboard")
 
 
@@ -358,6 +363,8 @@ def ai_food_log_review(request):
             messages.success(request, f"Logged {logged_count} item{'s' if logged_count != 1 else ''} from AI.")
             for badge in evaluate_badges(request.user):
                 messages.success(request, f"New badge: {badge.name}!")
+            for challenge in evaluate_challenges(request.user):
+                messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
         else:
             messages.info(request, "Nothing was logged.")
         return redirect("nutrition:dashboard")

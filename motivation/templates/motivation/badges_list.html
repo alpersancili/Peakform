@@ -23,6 +23,30 @@
           <p class="dashboard-card__note">Generate a workout plan to track weekly progress.</p>
         {% endif %}
       </div>
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Level {{ level.level }}</h2>
+        <p class="tracker-value">{{ level.xp }} <small>total XP</small></p>
+        <div class="progress-track progress-track--lg"><span style="width: {{ level.pct_to_next_level }}%; background: var(--color-primary);"></span></div>
+        <p class="dashboard-card__note">{{ level.xp_into_level }} / {{ level.xp_for_next_level }} XP to level {{ level.level|add:1 }}</p>
+      </div>
+    </div>
+
+    <h2 class="form-section__title" style="margin-top: 0; padding-top: 0; border-top: none;">This week's challenges</h2>
+    <div class="badge-grid" style="margin-bottom: var(--space-8);">
+      {% for row in challenges %}
+        <div class="card badge-card {% if not row.completed %}badge-card--locked{% endif %}">
+          <h3>{{ row.challenge.name }}</h3>
+          <p>{{ row.challenge.description }}</p>
+          <div class="progress-track" style="margin: var(--space-3) 0;"><span style="width: {% widthratio row.current row.target 100 %}%; background: var(--color-primary);"></span></div>
+          {% if row.completed %}
+            <span class="badge-card__status badge-card__status--earned">Complete! +{{ row.challenge.xp_reward }} XP</span>
+          {% else %}
+            <span class="badge-card__status">{{ row.current }} / {{ row.target }}</span>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="dashboard-card__note">No challenges available right now.</p>
+      {% endfor %}
     </div>
 
     <h2 class="form-section__title" style="margin-top: 0; padding-top: 0; border-top: none;">Badges</h2>

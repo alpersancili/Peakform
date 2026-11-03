@@ -56,6 +56,7 @@ Seed reference data after migrating:
 python manage.py seed_foods
 python manage.py seed_exercises
 python manage.py seed_badges
+python manage.py seed_challenges
 ```
 
 ## Tech stack
@@ -158,7 +159,8 @@ management).
    credentials, which only the server holds).
 7. Seed reference data once, after the first deploy:
    `python manage.py seed_foods && python manage.py seed_exercises &&
-   python manage.py seed_badges` (idempotent — safe to re-run).
+   python manage.py seed_badges && python manage.py seed_challenges`
+   (idempotent — safe to re-run).
 
 Run `python manage.py check --deploy` with your production environment
 variables set before going live; it flags missing production hardening
