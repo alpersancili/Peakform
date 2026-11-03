@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}AI Coach &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>AI Coach</h1>
+      <p>Ask about your training, nutrition, or progress &mdash; your coach sees your real logged data, not guesses.</p>
+    </div>
+
+    {% if not configured %}
+      <div class="card dashboard__prompt">
+        <p>The AI coach isn't configured on this server yet.</p>
+      </div>
+    {% else %}
+      {% if not conversation %}
+        <p class="empty-state">
+          No messages yet. Try asking something like &ldquo;What should I eat today to reach my protein target?&rdquo;
+          or &ldquo;Can you modify today's workout? I only have 20 minutes.&rdquo;
+        </p>
+      {% else %}
+        <div class="coach-chat">
+          {% for msg in conversation %}
+            <div class="coach-message coach-message--{{ msg.role }}">
+              <div class="coach-message__role">{{ msg.get_role_display }}</div>
+              <div>{{ msg.content }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="coach-composer">
+        {% csrf_token %}
+        {{ form.message }}
+        <button class="btn btn--primary" type="submit">Send</button>
+      </form>
+      <p class="coach-disclaimer">
+        {{ remaining_today }} messages left today. The coach isn't a doctor, physical therapist, or dietitian &mdash;
+        for pain, injury, or medical questions, talk to a qualified professional.
+      </p>
+
+      {% if conversation %}
+        <form method="post" action="{% url 'coach:clear_conversation' %}" style="margin-top: var(--space-4);">
+          {% csrf_token %}
+          <button class="btn btn--ghost btn--sm" type="submit">Clear conversation</button>
+        </form>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "motivation",
     "community",
     "progress",
+    "coach",
 ]
 
 MIDDLEWARE = [
@@ -196,6 +197,7 @@ LOGOUT_REDIRECT_URL = "core:landing"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 GEMINI_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_LIMIT", "20"))
+COACH_DAILY_LIMIT = int(os.environ.get("COACH_DAILY_LIMIT", "30"))
 
 
 # Security hardening for production (no-ops locally when DEBUG is True).

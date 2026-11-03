@@ -768,6 +768,50 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
 
 .report-form { display: flex; flex-direction: column; gap: var(--space-2); max-width: 420px; }
 
+/* ===========================================================
+   AI Coach
+   =========================================================== */
+
+.coach-chat { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); }
+.coach-message {
+  max-width: 85%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+}
+.coach-message--user {
+  align-self: flex-end;
+  background: var(--color-primary);
+  color: #fff;
+}
+.coach-message--assistant {
+  align-self: flex-start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.coach-message__role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin-bottom: var(--space-1);
+}
+.coach-composer { display: flex; gap: var(--space-3); align-items: flex-end; }
+.coach-composer textarea {
+  flex: 1;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  resize: vertical;
+}
+.coach-disclaimer { font-size: 0.8rem; color: var(--color-body); margin-top: var(--space-2); }
+
+@media (max-width: 860px) {
+  .coach-message { max-width: 95%; }
+}
+
 .profile-header {
   display: flex;
   justify-content: space-between;

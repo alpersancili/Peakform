@@ -15,6 +15,7 @@ urlpatterns = [
     path("badges/", include("motivation.urls")),
     path("community/", include("community.urls")),
     path("progress/", include("progress.urls")),
+    path("coach/", include("coach.urls")),
     path("", include("core.urls")),
 ]
 

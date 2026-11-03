@@ -22,13 +22,25 @@ measurement history, a weight trend, calorie-target consistency over
 the last 7 days, and water/step trends, alongside workout history and
 streaks), Supabase Storage for durable image uploads, and production
 deployment configuration (gunicorn, WhiteNoise static files, HTTPS/
-HSTS/secure-cookie hardening, console logging). 164 automated tests
+HSTS/secure-cookie hardening, console logging), and a conversational
+AI coach grounded in the user's real logged data (profile, nutrition
+targets vs. today's intake, active workout plan and history, streak,
+weight trend) rather than invented numbers - it asks for missing
+information instead of guessing, avoids diagnosing medical conditions,
+and never promises specific results or timelines. 192 automated tests
 cover the deterministic calculation logic, generation algorithms, and
 server-side permission checks across every app.
 
-**Exercise videos:** all 39 seeded exercises have a real YouTube
-demonstration URL, individually sourced (never guessed/fabricated) and
-spot-checked for quality before being added.
+**Exercise library:** 46 exercises (including full dips, hanging leg
+raises, and complete planche/front lever/one-arm-handstand
+progressions, not just their tuck/lean entry points), each with a real
+YouTube demonstration URL where one could be confidently sourced
+(individually verified, never guessed/fabricated) or detailed written
+instructions where one couldn't. Workout generation scales sets/reps/
+rest to the user's actual goal (strength vs. endurance vs. skills
+genuinely differ, not just in which exercises are picked), spreads
+training days across the week instead of clustering them, and
+sequences skill work first in a session while fresh.
 
 **Deferred to a future release** (per the brief's section 5 — not MVP
 scope): AI food photo recognition, calisthenics skill roadmaps, an
@@ -90,6 +102,7 @@ left unset.
 | `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. Unset = the feature is disabled with a clear in-app message; nothing else breaks. |
 | `GEMINI_MODEL` | Gemini model id (default `gemini-3.1-flash-lite`). |
 | `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
+| `COACH_DAILY_LIMIT` | Max AI coach messages per user per day (default `30`). |
 | `SUPABASE_S3_ACCESS_KEY_ID` / `SUPABASE_S3_SECRET_ACCESS_KEY` | Supabase Storage S3 credentials, from Project Settings -> Storage -> S3 Connection. Unset = uploads go to local disk. |
 | `SUPABASE_S3_ENDPOINT_URL` | e.g. `https://<ref>.storage.supabase.co/storage/v1/s3`, from the same S3 Connection page. |
 | `SUPABASE_S3_REGION` | Your Supabase project's region, e.g. `eu-central-1`. |
@@ -162,6 +175,7 @@ workouts/       Calisthenics workout planning and guided sessions
 motivation/     Streaks, weekly goals, and badges
 community/      Public feed, posts, comments, follows, reports
 progress/      Weight/measurement history, consistency, trends
+coach/         Conversational AI coach, grounded in real user data
 templates/      Shared base template
 static/         Design system CSS and JS
 docs/           Product brief
