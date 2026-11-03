@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
+from nutrition.calculations import MINIMUM_SAFE_CALORIES
+
 from .models import DietaryPreference, Equipment, UnitsPreference, UserProfile
 
 CM_PER_INCH = 2.54
@@ -78,6 +80,7 @@ class ProfileForm(forms.ModelForm):
             "equipment",
             "dietary_preferences",
             "country",
+            "calorie_target_override",
         ]
         widgets = {
             "date_of_birth": forms.DateInput(attrs={"type": "date"}),
@@ -85,6 +88,16 @@ class ProfileForm(forms.ModelForm):
             "preferred_units": forms.Select(attrs={"id": "id_preferred_units"}),
             "training_days_per_week": forms.NumberInput(attrs={"min": 1, "max": 7}),
             "session_duration_minutes": forms.NumberInput(attrs={"min": 10, "max": 180}),
+            "calorie_target_override": forms.NumberInput(attrs={"min": MINIMUM_SAFE_CALORIES, "max": 10000}),
+        }
+        labels = {
+            "calorie_target_override": "Custom daily calorie target (optional)",
+        }
+        help_texts = {
+            "calorie_target_override": (
+                f"Leave blank to use the calculated target. If set, must be at least "
+                f"{MINIMUM_SAFE_CALORIES} kcal."
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -101,6 +114,12 @@ class ProfileForm(forms.ModelForm):
             if instance.weight_kg:
                 self.fields["weight_kg_input"].initial = round(instance.weight_kg, 1)
                 self.fields["weight_lb"].initial = round(instance.weight_kg / KG_PER_LB, 1)
+
+    def clean_calorie_target_override(self):
+        value = self.cleaned_data.get("calorie_target_override")
+        if value is not None and value < MINIMUM_SAFE_CALORIES:
+            raise forms.ValidationError(f"Custom targets must be at least {MINIMUM_SAFE_CALORIES} kcal.")
+        return value
 
     def clean(self):
         cleaned = super().clean()

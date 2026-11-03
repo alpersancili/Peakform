@@ -103,7 +103,7 @@ def calculate_daily_targets(weight_kg, height_cm, age, sex, activity_level, prim
 
     tdee = calculate_tdee(bmr, activity_level)
     adjustment = GOAL_CALORIE_ADJUSTMENT.get(primary_goal, 0)
-    calories = override_calories or max(MINIMUM_SAFE_CALORIES, tdee + adjustment)
+    calories = max(MINIMUM_SAFE_CALORIES, override_calories or (tdee + adjustment))
 
     protein_per_kg = GOAL_PROTEIN_G_PER_KG.get(primary_goal, 1.8)
     protein_g = round(protein_per_kg * weight_kg)

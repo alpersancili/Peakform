@@ -17,11 +17,14 @@ natural-language food logging with validated, editable estimates, a
 calisthenics workout planner with guided sessions and progressive
 overload, streaks/weekly goals/badges, a public community feed (posts,
 images, likes, threaded comments, following, profiles, reporting and
-admin moderation), and production deployment configuration (gunicorn,
-WhiteNoise static files, HTTPS/HSTS/secure-cookie hardening, console
-logging). 139 automated tests cover the deterministic calculation logic,
-generation algorithms, and server-side permission checks across every
-app.
+admin moderation), progress tracking (weight and optional body
+measurement history, a weight trend, calorie-target consistency over
+the last 7 days, and water/step trends, alongside workout history and
+streaks), Supabase Storage for durable image uploads, and production
+deployment configuration (gunicorn, WhiteNoise static files, HTTPS/
+HSTS/secure-cookie hardening, console logging). 164 automated tests
+cover the deterministic calculation logic, generation algorithms, and
+server-side permission checks across every app.
 
 **Exercise videos:** all 39 seeded exercises have a real YouTube
 demonstration URL, individually sourced (never guessed/fabricated) and
@@ -158,6 +161,7 @@ nutrition/      Nutrition calculations, food diary, AI food logging
 workouts/       Calisthenics workout planning and guided sessions
 motivation/     Streaks, weekly goals, and badges
 community/      Public feed, posts, comments, follows, reports
+progress/      Weight/measurement history, consistency, trends
 templates/      Shared base template
 static/         Design system CSS and JS
 docs/           Product brief

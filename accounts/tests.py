@@ -174,3 +174,44 @@ class ProfileEditTests(TestCase):
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.height_cm, 172.0)
         self.assertEqual(self.profile.primary_goal, "muscle_gain")
+
+    def _base_post_data(self, **overrides):
+        data = {
+            "sex": "male",
+            "preferred_units": "metric",
+            "height_cm_input": "170",
+            "weight_kg_input": "70",
+            "activity_level": "moderate",
+            "experience_level": "beginner",
+            "primary_goal": "general_fitness",
+            "training_days_per_week": "3",
+            "session_duration_minutes": "45",
+            "equipment": [],
+            "dietary_preferences": [],
+        }
+        data.update(overrides)
+        return data
+
+    def test_custom_calorie_target_can_be_set(self):
+        response = self.client.post(
+            reverse("accounts:profile_edit"), self._base_post_data(calorie_target_override="2200")
+        )
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.calorie_target_override, 2200)
+
+    def test_custom_calorie_target_below_safety_floor_is_rejected(self):
+        response = self.client.post(
+            reverse("accounts:profile_edit"), self._base_post_data(calorie_target_override="500")
+        )
+        self.assertEqual(response.status_code, 200)
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.calorie_target_override)
+
+    def test_calorie_target_can_be_left_blank(self):
+        response = self.client.post(
+            reverse("accounts:profile_edit"), self._base_post_data(calorie_target_override="")
+        )
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.calorie_target_override)

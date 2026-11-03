@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Progress &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section dashboard">
+  <div class="container">
+    <div class="dashboard__header">
+      <div>
+        <h1>Your progress</h1>
+        <p>Weight, measurements, and consistency over time. Missed a day? No penalty &mdash; just pick back up.</p>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Streak &amp; training</h2>
+        <p class="tracker-value">{{ streak }} <small>day streak</small></p>
+        <p class="dashboard-card__note">
+          {{ weekly_workout_progress.completed }} / {{ weekly_workout_progress.target }} workouts this week
+          &middot; {{ total_completed_workouts }} completed all-time
+        </p>
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Calorie consistency (last 7 days)</h2>
+        {% if calorie_consistency.logged_days %}
+          <p class="tracker-value">{{ calorie_consistency.on_target_days }} <small>/ {{ calorie_consistency.window_days }} days on target</small></p>
+          <p class="dashboard-card__note">Logged on {{ calorie_consistency.logged_days }} of the last {{ calorie_consistency.window_days }} days.</p>
+        {% else %}
+          <p class="dashboard-card__note">No meals logged in the last {{ calorie_consistency.window_days }} days yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Weight trend</h2>
+        {% if weight_chart %}
+          <div class="weekly-chart">
+            {% for point in weight_chart %}
+              <div class="weekly-chart__bar-wrap">
+                <div class="weekly-chart__bar" style="height: {{ point.pct }}%;" title="{{ point.weight_kg }} kg"></div>
+                <span>{{ point.date|date:"D" }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          {% if weight_change is not None %}
+            <p class="dashboard-card__note">
+              {% if weight_change > 0 %}+{% endif %}{{ weight_change }} kg since your {{ entries|length }}-entry history began.
+            </p>
+          {% endif %}
+        {% else %}
+          <p class="dashboard-card__note">Log your weight below to start a trend.</p>
+        {% endif %}
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Water (last 7 days)</h2>
+        <div class="weekly-chart">
+          {% for day in water_history %}
+            <div class="weekly-chart__bar-wrap">
+              <div class="weekly-chart__bar {% if day.is_today %}weekly-chart__bar--today{% endif %}" style="height: {{ day.pct }}%;" title="{{ day.amount }} ml"></div>
+              <span>{{ day.date|date:"D" }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card dashboard-card">
+        <h2 class="dashboard-card__title">Steps (last 7 days)</h2>
+        <div class="weekly-chart">
+          {% for day in step_history %}
+            <div class="weekly-chart__bar-wrap">
+              <div class="weekly-chart__bar {% if day.is_today %}weekly-chart__bar--today{% endif %}" style="height: {{ day.pct }}%;" title="{{ day.amount }} steps"></div>
+              <span>{{ day.date|date:"D" }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card form-card" style="margin-top: var(--space-6);">
+      <h2 class="dashboard-card__title">Log today's weight &amp; measurements</h2>
+      <form method="post" class="form-grid">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn--primary" type="submit" style="align-self: end;">Save entry</button>
+      </form>
+    </div>
+
+    {% if entries %}
+      <div class="card" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">History</h2>
+        <ul class="history-list">
+          {% for entry in entries %}
+            <li class="history-item">
+              <div>
+                <h3>{{ entry.date }} &middot; {{ entry.weight_kg }} kg</h3>
+                {% if entry.waist_cm or entry.chest_cm or entry.hips_cm or entry.arm_cm %}
+                  <p class="dashboard-card__note">
+                    {% if entry.waist_cm %}Waist {{ entry.waist_cm }}cm{% endif %}
+                    {% if entry.chest_cm %}{% if entry.waist_cm %} &middot; {% endif %}Chest {{ entry.chest_cm }}cm{% endif %}
+                    {% if entry.hips_cm %}{% if entry.waist_cm or entry.chest_cm %} &middot; {% endif %}Hips {{ entry.hips_cm }}cm{% endif %}
+                    {% if entry.arm_cm %}{% if entry.waist_cm or entry.chest_cm or entry.hips_cm %} &middot; {% endif %}Arm {{ entry.arm_cm }}cm{% endif %}
+                  </p>
+                {% endif %}
+                {% if entry.notes %}<p class="dashboard-card__note">{{ entry.notes }}</p>{% endif %}
+              </div>
+              <form method="post" action="{% url 'progress:entry_delete' entry.id %}">
+                {% csrf_token %}
+                <button class="btn btn--ghost btn--sm" type="submit">Delete</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

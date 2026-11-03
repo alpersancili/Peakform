@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "workouts",
     "motivation",
     "community",
+    "progress",
 ]
 
 MIDDLEWARE = [

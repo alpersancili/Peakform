@@ -89,6 +89,14 @@ class CalculationTests(TestCase):
         )
         self.assertEqual(targets.calories, 2500)
 
+    def test_override_below_safety_floor_is_clamped(self):
+        targets = calculate_daily_targets(
+            weight_kg=80, height_cm=180, age=30, sex=Sex.MALE,
+            activity_level=ActivityLevel.MODERATE, primary_goal=PrimaryGoal.GENERAL_FITNESS,
+            override_calories=500,
+        )
+        self.assertEqual(targets.calories, 1200)
+
     def test_macro_grams_account_for_full_calorie_target(self):
         targets = calculate_daily_targets(
             weight_kg=80, height_cm=180, age=30, sex=Sex.MALE,

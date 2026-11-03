@@ -82,6 +82,12 @@
     <label for="{{ form.session_duration_minutes.id_for_label }}">Minutes per session</label>
     {{ form.session_duration_minutes }}
   </div>
+  <div class="field">
+    <label for="{{ form.calorie_target_override.id_for_label }}">{{ form.calorie_target_override.label }}</label>
+    {{ form.calorie_target_override }}
+    <p class="field-help">{{ form.calorie_target_override.help_text }}</p>
+    {% for error in form.calorie_target_override.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+  </div>
 </div>
 
 <h2 class="form-section__title">Equipment available</h2>

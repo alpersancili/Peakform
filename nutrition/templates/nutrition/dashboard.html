@@ -11,6 +11,7 @@
         <a class="streak-chip" href="{% url 'motivation:badges_list' %}">{{ streak }} day streak</a>
       </div>
       <div class="dashboard__header-actions">
+        <a class="btn btn--ghost" href="{% url 'progress:overview' %}">View progress</a>
         <a class="btn btn--ghost" href="{% url 'nutrition:ai_food_log' %}">+ Log with AI</a>
         <a class="btn btn--primary" href="{% url 'nutrition:food_search' %}">+ Log food</a>
       </div>

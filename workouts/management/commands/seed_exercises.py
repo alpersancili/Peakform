@@ -10,7 +10,7 @@ from workouts.models import Exercise
 # avoid fake/placeholder content).
 EXERCISES = [
     # --- Warm-up ---
-    dict(name="Arm Circles", video="https://www.youtube.com/watch?v=hne3nHGXPRM", category="warmup", movement_type="reps", difficulty="beginner",
+    dict(name="Arm Circles", video="https://www.youtube.com/watch?v=MY0Wx6hSdMs", category="warmup", movement_type="reps", difficulty="beginner",
          muscles="Shoulders", equipment=[], goals=[],
          instructions="Extend arms to the sides and make controlled circles, small at first and gradually larger.",
          breathing="Breathe naturally throughout.", mistakes="Swinging too fast instead of controlled circles.",
