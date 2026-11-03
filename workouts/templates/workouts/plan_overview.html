@@ -15,6 +15,7 @@
       </div>
       <div class="profile-header__actions">
         <a class="btn btn--ghost" href="{% url 'workouts:recovery_note_add' %}">Log recovery</a>
+        <a class="btn btn--ghost" href="{% url 'workouts:personal_records' %}">Records</a>
         <a class="btn btn--ghost" href="{% url 'workouts:session_history' %}">History</a>
         <a class="btn btn--primary" href="{% url 'workouts:plan_generate' %}">{% if plan %}Regenerate plan{% else %}Generate a plan{% endif %}</a>
       </div>

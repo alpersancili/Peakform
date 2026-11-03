@@ -10,6 +10,7 @@ from .generation import generate_plan_days, suggest_progression
 from .models import (
     Exercise,
     ExerciseLog,
+    MovementType,
     RecoveryNote,
     SessionStatus,
     WorkoutPlan,
@@ -17,6 +18,7 @@ from .models import (
     WorkoutPlanExercise,
     WorkoutSession,
 )
+from .personal_records import compute_personal_records, detect_new_records
 
 
 def _active_plan(user):
@@ -170,6 +172,9 @@ def session_complete(request, session_id):
                     progression_notes.append(f"{verb} target for {plan_exercise.exercise.name}.")
 
         messages.success(request, "Workout complete. Nice work!")
+        for exercise, value in detect_new_records(request.user, session):
+            unit = "s hold" if exercise.movement_type == MovementType.HOLD else " reps"
+            messages.success(request, f"New PR: {exercise.name} — {value}{unit}!")
         for note in progression_notes:
             messages.info(request, note)
         for badge in evaluate_badges(request.user):
@@ -182,6 +187,12 @@ def session_complete(request, session_id):
 def session_history(request):
     sessions = WorkoutSession.objects.filter(user=request.user).select_related("plan_day")[:30]
     return render(request, "workouts/session_history.html", {"sessions": sessions})
+
+
+@login_required
+def personal_records(request):
+    records = compute_personal_records(request.user)
+    return render(request, "workouts/personal_records.html", {"records": records})
 
 
 @login_required

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Personal records &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Personal records</h1>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    {% if records %}
+      <ul class="history-list">
+        {% for record in records %}
+          <li class="card history-item">
+            <div>
+              <h3>{{ record.exercise.name }}</h3>
+              <p class="dashboard-card__note">
+                {% if record.movement_type == "hold" %}
+                  {{ record.value }}s hold
+                {% else %}
+                  {{ record.value }} reps
+                {% endif %}
+                &middot; set on {{ record.date }}
+              </p>
+            </div>
+            <a class="btn btn--ghost btn--sm" href="{% url 'workouts:session_detail' record.session_id %}">View session</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">No records yet &mdash; complete a workout to set your first one.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

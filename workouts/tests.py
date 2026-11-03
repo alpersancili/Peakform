@@ -15,6 +15,7 @@ from .models import (
     WorkoutPlanExercise,
     WorkoutSession,
 )
+from .personal_records import compute_personal_records, detect_new_records
 
 
 def make_exercise(name, category, movement_type="reps", difficulty=ExperienceLevel.BEGINNER,
@@ -391,6 +392,73 @@ class SessionFlowTests(TestCase):
         self.assertIsNotNone(session.completed_at)
         self.assertEqual(session.notes, "Felt good")
         self.assertEqual(self.plan_exercise.target_reps, 11)
+
+
+class PersonalRecordsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.pushup = make_exercise("Push-up", "push", reps=10)
+        self.plank = make_exercise("Plank", "core", movement_type="hold", hold=30)
+
+    def _completed_session(self, *log_kwargs_list):
+        session = WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        for index, kwargs in enumerate(log_kwargs_list, start=1):
+            ExerciseLog.objects.create(session=session, set_number=index, **kwargs)
+        return session
+
+    def test_best_reps_set_wins_over_lower_sets(self):
+        self._completed_session(
+            {"exercise": self.pushup, "reps": 8}, {"exercise": self.pushup, "reps": 12}
+        )
+        records = compute_personal_records(self.user)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["exercise"], self.pushup)
+        self.assertEqual(records[0]["value"], 12)
+
+    def test_hold_exercise_tracked_by_hold_seconds(self):
+        self._completed_session({"exercise": self.plank, "hold_seconds": 45})
+        records = compute_personal_records(self.user)
+        self.assertEqual(records[0]["value"], 45)
+        self.assertEqual(records[0]["movement_type"], "hold")
+
+    def test_in_progress_session_does_not_count(self):
+        session = WorkoutSession.objects.create(user=self.user, status=SessionStatus.IN_PROGRESS)
+        ExerciseLog.objects.create(session=session, exercise=self.pushup, set_number=1, reps=99)
+        self.assertEqual(compute_personal_records(self.user), [])
+
+    def test_detect_new_records_flags_improvement_over_prior_best(self):
+        self._completed_session({"exercise": self.pushup, "reps": 10})
+        new_session = self._completed_session({"exercise": self.pushup, "reps": 15})
+
+        new_records = detect_new_records(self.user, new_session)
+        self.assertEqual(new_records, [(self.pushup, 15)])
+
+    def test_detect_new_records_excludes_non_improvements(self):
+        self._completed_session({"exercise": self.pushup, "reps": 10})
+        tied_session = self._completed_session({"exercise": self.pushup, "reps": 8})
+
+        self.assertEqual(detect_new_records(self.user, tied_session), [])
+
+    def test_completing_session_shows_new_pr_message(self):
+        plan = WorkoutPlan.objects.create(
+            user=self.user, goal=PrimaryGoal.GENERAL_FITNESS, experience_level=ExperienceLevel.BEGINNER,
+            training_days_per_week=3, session_duration_minutes=45, is_active=True,
+        )
+        day = WorkoutPlanDay.objects.create(plan=plan, day_index=0, label="Full Body")
+        session = WorkoutSession.objects.create(user=self.user, plan_day=day)
+        ExerciseLog.objects.create(session=session, exercise=self.pushup, set_number=1, reps=20)
+
+        response = self.client.post(
+            reverse("workouts:session_complete", args=[session.id]), {"notes": ""}, follow=True
+        )
+        self.assertContains(response, "New PR: Push-up")
+
+    def test_records_page_lists_personal_bests(self):
+        self._completed_session({"exercise": self.pushup, "reps": 12})
+        response = self.client.get(reverse("workouts:personal_records"))
+        self.assertContains(response, "Push-up")
+        self.assertContains(response, "12 reps")
 
 
 class RecoveryNoteTests(TestCase):

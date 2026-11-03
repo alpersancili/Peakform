@@ -12,5 +12,6 @@ urlpatterns = [
     path("sessions/<int:session_id>/log/<int:exercise_id>/", views.log_set, name="log_set"),
     path("sessions/<int:session_id>/complete/", views.session_complete, name="session_complete"),
     path("sessions/history/", views.session_history, name="session_history"),
+    path("records/", views.personal_records, name="personal_records"),
     path("recovery/", views.recovery_note_add, name="recovery_note_add"),
 ]
