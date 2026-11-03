@@ -13,5 +13,7 @@ urlpatterns = [
     path("sessions/<int:session_id>/complete/", views.session_complete, name="session_complete"),
     path("sessions/history/", views.session_history, name="session_history"),
     path("records/", views.personal_records, name="personal_records"),
+    path("exercises/", views.exercise_library, name="exercise_library"),
+    path("exercises/<slug:slug>/", views.exercise_detail, name="exercise_detail"),
     path("recovery/", views.recovery_note_add, name="recovery_note_add"),
 ]

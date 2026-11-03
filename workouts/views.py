@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from accounts.models import Equipment, ExperienceLevel
 from motivation.badges import evaluate_badges
 
 from .forms import PlanGenerateForm, RecoveryNoteForm, SetLogForm
@@ -10,6 +12,7 @@ from .generation import generate_plan_days, suggest_progression
 from .models import (
     Exercise,
     ExerciseLog,
+    MovementCategory,
     MovementType,
     RecoveryNote,
     SessionStatus,
@@ -210,3 +213,44 @@ def recovery_note_add(request):
         form = RecoveryNoteForm(instance=note)
 
     return render(request, "workouts/recovery_note_form.html", {"form": form})
+
+
+@login_required
+def exercise_library(request):
+    query = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "")
+    difficulty = request.GET.get("difficulty", "")
+    equipment = request.GET.get("equipment", "")
+
+    exercises = Exercise.objects.all()
+    if query:
+        exercises = exercises.filter(Q(name__icontains=query) | Q(target_muscles__icontains=query))
+    if category in {choice for choice, _ in MovementCategory.choices}:
+        exercises = exercises.filter(category=category)
+    if difficulty in {choice for choice, _ in ExperienceLevel.choices}:
+        exercises = exercises.filter(difficulty_level=difficulty)
+    if equipment in {choice for choice, _ in Equipment.choices}:
+        # JSONField list-containment isn't portable across DB backends
+        # (unsupported on SQLite), so filter in Python instead.
+        exercises = [ex for ex in exercises if equipment in ex.equipment_required]
+
+    context = {
+        "exercises": exercises,
+        "query": query,
+        "category": category,
+        "difficulty": difficulty,
+        "equipment": equipment,
+        "category_choices": MovementCategory.choices,
+        "difficulty_choices": ExperienceLevel.choices,
+        "equipment_choices": Equipment.choices,
+    }
+    return render(request, "workouts/exercise_library.html", context)
+
+
+@login_required
+def exercise_detail(request, slug):
+    exercise = get_object_or_404(Exercise, slug=slug)
+    personal_best = next(
+        (r for r in compute_personal_records(request.user) if r["exercise"].id == exercise.id), None
+    )
+    return render(request, "workouts/exercise_detail.html", {"exercise": exercise, "personal_best": personal_best})

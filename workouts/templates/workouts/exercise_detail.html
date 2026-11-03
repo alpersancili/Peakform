@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ exercise.name }} &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <a href="{% url 'workouts:exercise_library' %}">&larr; Back to library</a>
+    </div>
+
+    <div class="card">
+      <span class="exercise-category exercise-category--{{ exercise.category }}">{{ exercise.get_category_display }}</span>
+      <h1 style="margin: var(--space-2) 0;">{{ exercise.name }}</h1>
+      <p class="dashboard-card__note">
+        {{ exercise.get_difficulty_level_display }}
+        {% if exercise.target_muscles %}&middot; {{ exercise.target_muscles }}{% endif %}
+        {% if exercise.equipment_required %}&middot; {{ exercise.equipment_required|join:", " }}{% endif %}
+      </p>
+
+      {% if personal_best %}
+        <p class="dashboard-card__note" style="margin-top: var(--space-3);">
+          Your best: {% if personal_best.movement_type == "hold" %}{{ personal_best.value }}s hold{% else %}{{ personal_best.value }} reps{% endif %}
+          (set {{ personal_best.date }})
+        </p>
+      {% endif %}
+
+      {% if exercise.video_url %}
+        <div class="video-embed" style="margin-top: var(--space-4);">
+          <iframe src="{{ exercise.embed_url }}" title="{{ exercise.name }} demonstration" allowfullscreen></iframe>
+        </div>
+        <p class="dashboard-card__note"><a href="{{ exercise.video_url }}" target="_blank" rel="noopener">Watch on YouTube</a></p>
+      {% endif %}
+
+      <div style="margin-top: var(--space-4);">
+        <p><strong>Instructions:</strong> {{ exercise.instructions }}</p>
+        {% if exercise.breathing_guidance %}<p><strong>Breathing:</strong> {{ exercise.breathing_guidance }}</p>{% endif %}
+        {% if exercise.common_mistakes %}<p><strong>Avoid:</strong> {{ exercise.common_mistakes }}</p>{% endif %}
+      </div>
+
+      {% if exercise.easier_variation or exercise.harder_variation %}
+        <p style="margin-top: var(--space-4);">
+          {% if exercise.easier_variation %}
+            <strong>Easier:</strong> <a href="{% url 'workouts:exercise_detail' exercise.easier_variation.slug %}">{{ exercise.easier_variation.name }}</a>&nbsp;
+          {% endif %}
+          {% if exercise.harder_variation %}
+            <strong>Harder:</strong> <a href="{% url 'workouts:exercise_detail' exercise.harder_variation.slug %}">{{ exercise.harder_variation.name }}</a>
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

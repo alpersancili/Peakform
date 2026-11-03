@@ -461,6 +461,56 @@ class PersonalRecordsTests(TestCase):
         self.assertContains(response, "12 reps")
 
 
+class ExerciseLibraryTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.pullup = make_exercise(
+            "Pull-up", "pull", difficulty=ExperienceLevel.INTERMEDIATE, equipment=[Equipment.PULL_UP_BAR]
+        )
+        self.pushup = make_exercise("Push-up", "push", difficulty=ExperienceLevel.BEGINNER)
+
+    def test_library_lists_all_exercises_with_no_filters(self):
+        response = self.client.get(reverse("workouts:exercise_library"))
+        self.assertContains(response, "Pull-up")
+        self.assertContains(response, "Push-up")
+
+    def test_search_by_name_filters_results(self):
+        response = self.client.get(reverse("workouts:exercise_library"), {"q": "pull"})
+        self.assertContains(response, "Pull-up")
+        self.assertNotContains(response, "Push-up")
+
+    def test_filter_by_category(self):
+        response = self.client.get(reverse("workouts:exercise_library"), {"category": "push"})
+        self.assertContains(response, "Push-up")
+        self.assertNotContains(response, "<h3>Pull-up</h3>")
+
+    def test_filter_by_difficulty(self):
+        response = self.client.get(reverse("workouts:exercise_library"), {"difficulty": "beginner"})
+        self.assertContains(response, "Push-up")
+        self.assertNotContains(response, "<h3>Pull-up</h3>")
+
+    def test_filter_by_equipment(self):
+        response = self.client.get(reverse("workouts:exercise_library"), {"equipment": "pull_up_bar"})
+        self.assertContains(response, "Pull-up")
+        self.assertNotContains(response, "Push-up")
+
+    def test_detail_page_shows_instructions(self):
+        response = self.client.get(reverse("workouts:exercise_detail", args=[self.pushup.slug]))
+        self.assertContains(response, "Push-up")
+        self.assertContains(response, "Do it with good form.")
+
+    def test_detail_page_shows_personal_best_when_set(self):
+        session = WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        ExerciseLog.objects.create(session=session, exercise=self.pushup, set_number=1, reps=25)
+        response = self.client.get(reverse("workouts:exercise_detail", args=[self.pushup.slug]))
+        self.assertContains(response, "25 reps")
+
+    def test_unknown_slug_returns_404(self):
+        response = self.client.get(reverse("workouts:exercise_detail", args=["not-a-real-exercise"]))
+        self.assertEqual(response.status_code, 404)
+
+
 class RecoveryNoteTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("athlete", "a@example.com", "password123!")

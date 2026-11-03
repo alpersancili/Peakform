@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Exercise library &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Exercise library</h1>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    <form class="card form-card" method="get">
+      <div class="form-grid">
+        <div class="field">
+          <label for="q">Search</label>
+          <input type="text" id="q" name="q" value="{{ query }}" placeholder="e.g. pull-up, core, handstand">
+        </div>
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" name="category">
+            <option value="">Any</option>
+            {% for value, label in category_choices %}
+              <option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="difficulty">Difficulty</label>
+          <select id="difficulty" name="difficulty">
+            <option value="">Any</option>
+            {% for value, label in difficulty_choices %}
+              <option value="{{ value }}" {% if difficulty == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="equipment">Equipment</label>
+          <select id="equipment" name="equipment">
+            <option value="">Any</option>
+            {% for value, label in equipment_choices %}
+              <option value="{{ value }}" {% if equipment == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button class="btn btn--primary" type="submit" style="margin-top: var(--space-3);">Filter</button>
+      {% if query or category or difficulty or equipment %}
+        <a class="btn btn--ghost" href="{% url 'workouts:exercise_library' %}">Clear</a>
+      {% endif %}
+    </form>
+
+    {% if exercises %}
+      <ul class="history-list" style="margin-top: var(--space-6);">
+        {% for exercise in exercises %}
+          <li class="card history-item">
+            <div>
+              <span class="exercise-category exercise-category--{{ exercise.category }}">{{ exercise.get_category_display }}</span>
+              <h3>{{ exercise.name }}</h3>
+              <p class="dashboard-card__note">
+                {{ exercise.get_difficulty_level_display }}
+                {% if exercise.target_muscles %}&middot; {{ exercise.target_muscles }}{% endif %}
+              </p>
+            </div>
+            <a class="btn btn--ghost btn--sm" href="{% url 'workouts:exercise_detail' exercise.slug %}">View</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state" style="margin-top: var(--space-6);">No exercises match those filters.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
