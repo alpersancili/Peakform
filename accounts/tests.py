@@ -1,10 +1,6 @@
 from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
-from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 
 from .models import UserProfile
 
@@ -54,53 +50,6 @@ class LoginTests(TestCase):
         self.client.login(username="athlete", password="password123!")
         response = self.client.get(reverse("accounts:logout"))
         self.assertEqual(response.status_code, 405)
-
-
-class PasswordResetTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
-
-    def test_requesting_reset_for_known_email_sends_email_with_link(self):
-        response = self.client.post(reverse("accounts:password_reset"), {"email": "athlete@example.com"})
-        self.assertRedirects(response, reverse("accounts:password_reset_done"))
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("reset/", mail.outbox[0].body)
-        self.assertEqual(mail.outbox[0].to, ["athlete@example.com"])
-
-    def test_requesting_reset_for_unknown_email_does_not_send_or_error(self):
-        response = self.client.post(reverse("accounts:password_reset"), {"email": "nobody@example.com"})
-        self.assertRedirects(response, reverse("accounts:password_reset_done"))
-        self.assertEqual(len(mail.outbox), 0)
-
-    def _reset_link_args(self):
-        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-        token = default_token_generator.make_token(self.user)
-        return uid, token
-
-    def test_valid_link_lets_user_set_new_password(self):
-        uid, token = self._reset_link_args()
-        confirm_url = reverse("accounts:password_reset_confirm", args=[uid, token])
-
-        # Django swaps the real token for "set-password" in the session on
-        # first GET, so the POST must follow that redirect like a browser would.
-        session_response = self.client.get(confirm_url, follow=True)
-        self.assertEqual(session_response.status_code, 200)
-
-        response = self.client.post(
-            session_response.redirect_chain[-1][0],
-            {"new_password1": "a-brand-new-pass-1", "new_password2": "a-brand-new-pass-1"},
-        )
-        self.assertRedirects(response, reverse("accounts:password_reset_complete"))
-
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("a-brand-new-pass-1"))
-
-    def test_invalid_token_shows_expired_message(self):
-        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-        response = self.client.get(
-            reverse("accounts:password_reset_confirm", args=[uid, "bad-token"]), follow=True
-        )
-        self.assertContains(response, "Link expired")
 
 
 class OnboardingAccessTests(TestCase):

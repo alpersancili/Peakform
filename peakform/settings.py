@@ -196,37 +196,6 @@ LOGIN_REDIRECT_URL = "nutrition:dashboard"
 LOGOUT_REDIRECT_URL = "core:landing"
 
 
-# Email (used for password reset).
-#
-# Preferred: RESEND_API_KEY, sent over Resend's HTTP API (plain HTTPS,
-# port 443). Outbound SMTP - even on port 587 - is blocked or silently
-# dropped by some PaaS hosts for anti-spam reasons (confirmed on Render:
-# smtp.resend.com was reachable fine from outside, but the live app's own
-# SMTP connection just hung until the worker timeout killed it), so the
-# HTTP API sidesteps that entirely.
-#
-# Fallback: DJANGO_EMAIL_HOST* for any other SMTP provider (SendGrid,
-# Mailgun, Gmail, etc.), for hosts that don't block outbound SMTP.
-#
-# Without either set, falls back to printing emails to the server log:
-# password reset still "succeeds" (Django never reveals whether an
-# address has an account) but the actual reset link only shows up in
-# logs, not a real inbox, until one of the above is configured.
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "")
-if RESEND_API_KEY:
-    EMAIL_BACKEND = "core.email_backends.ResendAPIBackend"
-elif EMAIL_HOST:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
-    EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
-    EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
-    EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", default=True)
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "Peakform <noreply@peakform.app>")
-
-
 # Third-party API keys (never hardcode; read from the environment only).
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")

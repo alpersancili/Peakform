@@ -108,9 +108,6 @@ left unset.
 | `SUPABASE_S3_ENDPOINT_URL` | e.g. `https://<ref>.storage.supabase.co/storage/v1/s3`, from the same S3 Connection page. |
 | `SUPABASE_S3_REGION` | Your Supabase project's region, e.g. `eu-central-1`. |
 | `SUPABASE_S3_BUCKET` | Storage bucket name (default `community-images`). |
-| `RESEND_API_KEY` | Preferred way to send password-reset emails — sent over Resend's HTTP API (plain HTTPS), which isn't blocked by PaaS hosts that silently drop outbound SMTP (confirmed on Render). Free at resend.com. |
-| `DJANGO_EMAIL_HOST` / `DJANGO_EMAIL_PORT` / `DJANGO_EMAIL_HOST_USER` / `DJANGO_EMAIL_HOST_PASSWORD` / `DJANGO_EMAIL_USE_TLS` | Fallback: any SMTP provider, for hosts where outbound SMTP isn't blocked. Ignored if `RESEND_API_KEY` is set. |
-| `DJANGO_DEFAULT_FROM_EMAIL` | From address for outgoing email (default `Peakform <onboarding@resend.dev>`). With neither email option set, emails print to the server log instead of sending; password reset still "works" but the link only shows up in logs. |
 
 ## Running tests
 
