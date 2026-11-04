@@ -12,7 +12,12 @@
 
     {% for row in rows %}
       <div class="card" style="margin-bottom: var(--space-6);">
-        <h2 class="dashboard-card__title">{{ row.template.name }}</h2>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3);">
+          <h2 class="dashboard-card__title" style="margin-bottom: 0;">{{ row.template.name }}</h2>
+          {% if row.is_recommended %}
+            <span class="badge-card__status badge-card__status--earned">Matches your goal</span>
+          {% endif %}
+        </div>
         <p class="dashboard-card__note">{{ row.template.tagline }}</p>
         <p style="margin: var(--space-3) 0;">{{ row.template.description }}</p>
 
@@ -29,7 +34,10 @@
 
         <div style="display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4);">
           {% for value, label in difficulty_choices %}
-            <a class="btn btn--ghost btn--sm" href="{% url 'workouts:program_detail' row.template.slug value %}">{{ label }}</a>
+            <a class="btn {% if value == recommended_difficulty %}btn--secondary{% else %}btn--ghost{% endif %} btn--sm"
+               href="{% url 'workouts:program_detail' row.template.slug value %}">
+              {{ label }}{% if value == recommended_difficulty %} (your level){% endif %}
+            </a>
           {% endfor %}
         </div>
       </div>

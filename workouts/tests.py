@@ -588,6 +588,42 @@ class ProgramTests(TestCase):
         self.assertRedirects(response, reverse("workouts:program_detail", args=["mixed-training", "easy"]))
         self.assertFalse(WorkoutPlan.objects.filter(user=self.user).exists())
 
+    def test_warns_when_equipment_missing_from_profile(self):
+        bar_exercise = make_exercise("Pull-up", "pull", reps=8, equipment=[Equipment.PULL_UP_BAR])
+        ProgramTemplateExercise.objects.create(
+            day=self.training_day, exercise=bar_exercise, order=2, prescription="3 x 8",
+            target_sets=3, target_reps=8, target_hold_seconds=None,
+        )
+        self.user.profile.equipment = []
+        self.user.profile.save()
+
+        response = self.client.get(reverse("workouts:program_detail", args=["mixed-training", "easy"]))
+        self.assertContains(response, "Pull-up bar")
+
+    def test_no_warning_when_equipment_matches_profile(self):
+        bar_exercise = make_exercise("Pull-up", "pull", reps=8, equipment=[Equipment.PULL_UP_BAR])
+        ProgramTemplateExercise.objects.create(
+            day=self.training_day, exercise=bar_exercise, order=2, prescription="3 x 8",
+            target_sets=3, target_reps=8, target_hold_seconds=None,
+        )
+        self.user.profile.equipment = [Equipment.PULL_UP_BAR]
+        self.user.profile.save()
+
+        response = self.client.get(reverse("workouts:program_detail", args=["mixed-training", "easy"]))
+        self.assertNotContains(response, "isn't in your profile")
+
+    def test_recommended_template_matches_profile_goal(self):
+        self.user.profile.primary_goal = PrimaryGoal.GENERAL_FITNESS
+        self.user.profile.save()
+        response = self.client.get(reverse("workouts:program_list"))
+        self.assertContains(response, "Matches your goal")
+
+    def test_recommended_difficulty_matches_profile_experience(self):
+        self.user.profile.experience_level = ExperienceLevel.BEGINNER
+        self.user.profile.save()
+        response = self.client.get(reverse("workouts:program_detail", args=["mixed-training", "easy"]))
+        self.assertContains(response, "Recommended for you")
+
 
 class RecoveryNoteTests(TestCase):
     def setUp(self):

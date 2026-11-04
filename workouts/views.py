@@ -277,8 +277,32 @@ PROGRAM_SLUG_TO_GOAL = {
 }
 
 
+def _recommended_difficulty(experience_level):
+    return next(
+        (d for d, exp in PROGRAM_DIFFICULTY_TO_EXPERIENCE.items() if exp == experience_level),
+        ProgramDifficulty.INTERMEDIATE,
+    )
+
+
+def _recommended_slug(primary_goal):
+    return next((slug for slug, goal in PROGRAM_SLUG_TO_GOAL.items() if goal == primary_goal), "mixed-training")
+
+
+def _missing_equipment(user_equipment, days):
+    needed = set()
+    for day in days:
+        for plan_exercise in day.exercises.all():
+            needed.update(plan_exercise.exercise.equipment_required)
+    needed.discard(Equipment.NONE)
+    return sorted(needed - set(user_equipment))
+
+
 @login_required
 def program_list(request):
+    profile = request.user.profile
+    recommended_slug = _recommended_slug(profile.primary_goal)
+    recommended_difficulty = _recommended_difficulty(profile.experience_level)
+
     templates = ProgramTemplate.objects.prefetch_related("days")
     rows = []
     for template in templates:
@@ -291,9 +315,15 @@ def program_list(request):
                     ("Strength", template.strength_rating),
                     ("Athleticism", template.athleticism_rating),
                 ],
+                "is_recommended": template.slug == recommended_slug,
             }
         )
-    return render(request, "workouts/program_list.html", {"rows": rows, "difficulty_choices": ProgramDifficulty.choices})
+    context = {
+        "rows": rows,
+        "difficulty_choices": ProgramDifficulty.choices,
+        "recommended_difficulty": recommended_difficulty,
+    }
+    return render(request, "workouts/program_list.html", context)
 
 
 @login_required
@@ -303,7 +333,7 @@ def program_detail(request, slug, difficulty):
         messages.error(request, "Unknown difficulty.")
         return redirect("workouts:program_list")
 
-    days = (
+    days = list(
         template.days.filter(difficulty=difficulty)
         .prefetch_related("exercises__exercise")
         .order_by("day_index")
@@ -313,6 +343,14 @@ def program_detail(request, slug, difficulty):
         active_plan and active_plan.source_template_id == template.id and active_plan.source_difficulty == difficulty
     )
 
+    profile = request.user.profile
+    equipment_display = dict(Equipment.choices)
+    missing_equipment = [equipment_display[e] for e in _missing_equipment(profile.equipment, days)]
+    is_recommended = (
+        template.slug == _recommended_slug(profile.primary_goal)
+        and difficulty == _recommended_difficulty(profile.experience_level)
+    )
+
     context = {
         "template": template,
         "difficulty": difficulty,
@@ -320,6 +358,9 @@ def program_detail(request, slug, difficulty):
         "difficulty_choices": ProgramDifficulty.choices,
         "days": days,
         "is_active_source": is_active_source,
+        "missing_equipment": missing_equipment,
+        "is_recommended": is_recommended,
+        "training_days_per_week": sum(1 for day in days if not day.is_rest_day),
     }
     return render(request, "workouts/program_detail.html", context)
 
