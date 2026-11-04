@@ -28,13 +28,60 @@ COOLDOWN_EXERCISE_COUNT = 1
 # structured. "Legs" always means legs AND core/abs together (a static
 # hold like an L-sit pairs naturally with a leg day), never push or
 # pull.
-SPLIT_BY_DAY_COUNT = {
-    1: ["Full Body"],
-    2: ["Upper Body", "Lower Body"],
-    3: ["Push", "Pull", "Legs"],
-    4: ["Upper Body", "Lower Body", "Upper Body", "Lower Body"],
-    5: ["Push", "Pull", "Push", "Pull", "Legs"],
-    6: ["Push", "Pull", "Legs", "Push", "Pull", "Legs"],
+#
+# The split structure itself - not just the prescription inside it -
+# depends on the goal: Skills gets a dedicated Push/Pull split from the
+# lowest day counts (skill work needs its own focused sessions);
+# Strength/Muscle gain/General fitness use Full Body at low frequency
+# and split into Upper/Lower (then Push/Pull/Legs) as frequency allows;
+# Fat loss alternates full-body strength with short conditioning blocks;
+# Endurance and Flexibility are their own session types entirely
+# (Conditioning / Mobility), not variations on a push/pull/legs split -
+# a user who picks "Endurance" should get aerobic/circuit work, not a
+# strength split with shorter rest.
+SPLIT_BY_GOAL_AND_DAYS = {
+    PrimaryGoal.SKILLS: {
+        1: ["Full Body"],
+        2: ["Push", "Pull"],
+        3: ["Push", "Pull", "Legs"],
+        4: ["Push", "Pull", "Push", "Pull"],
+        5: ["Push", "Pull", "Legs", "Push", "Pull"],
+        6: ["Push", "Pull", "Legs", "Push", "Pull", "Legs"],
+    },
+    PrimaryGoal.STRENGTH: {
+        1: ["Full Body"],
+        2: ["Full Body", "Full Body"],
+        3: ["Full Body", "Full Body", "Full Body"],
+        4: ["Upper Body", "Lower Body", "Upper Body", "Lower Body"],
+        5: ["Upper Body", "Lower Body", "Upper Body", "Lower Body", "Full Body"],
+        6: ["Upper Body", "Lower Body", "Full Body", "Upper Body", "Lower Body", "Full Body"],
+    },
+    PrimaryGoal.MUSCLE_GAIN: {
+        1: ["Full Body"],
+        2: ["Full Body", "Full Body"],
+        3: ["Full Body", "Full Body", "Full Body"],
+        4: ["Upper Body", "Lower Body", "Upper Body", "Lower Body"],
+        5: ["Push", "Pull", "Legs", "Upper Body", "Lower Body"],
+        6: ["Push", "Pull", "Legs", "Push", "Pull", "Legs"],
+    },
+    PrimaryGoal.FAT_LOSS: {
+        1: ["Full Body"],
+        2: ["Full Body", "Full Body"],
+        3: ["Full Body", "Conditioning", "Full Body"],
+        4: ["Full Body", "Conditioning", "Full Body", "Conditioning"],
+        5: ["Full Body", "Conditioning", "Full Body", "Conditioning", "Full Body"],
+        6: ["Full Body", "Conditioning", "Full Body", "Conditioning", "Full Body", "Conditioning"],
+    },
+    PrimaryGoal.GENERAL_FITNESS: {
+        1: ["Full Body"],
+        2: ["Full Body", "Full Body"],
+        3: ["Full Body", "Full Body", "Full Body"],
+        4: ["Upper Body", "Lower Body", "Full Body", "Conditioning"],
+        5: ["Upper Body", "Lower Body", "Conditioning", "Upper Body", "Lower Body"],
+        6: ["Upper Body", "Lower Body", "Conditioning", "Upper Body", "Lower Body", "Full Body"],
+    },
+    PrimaryGoal.ENDURANCE: {n: ["Conditioning"] * n for n in range(1, 7)},
+    PrimaryGoal.FLEXIBILITY: {n: ["Mobility"] * n for n in range(1, 7)},
 }
 
 # Which of the 7 day_index slots (0=first day of the cycle) are training
@@ -105,6 +152,8 @@ LABEL_CATEGORIES = {
     # (hanging leg raises etc. use the same bar), so core stays here.
     "Pull": [MovementCategory.PULL, MovementCategory.CORE],
     "Legs": [MovementCategory.LEGS, MovementCategory.CORE],
+    "Conditioning": [MovementCategory.CONDITIONING],
+    "Mobility": [MovementCategory.MOBILITY],
 }
 
 
@@ -184,7 +233,8 @@ def generate_plan_days(all_exercises, experience_level, equipment, goal, trainin
     (passed in so callers can prefetch once and tests can use fixtures).
     """
     training_days = max(1, min(training_days_per_week, MAX_TRAINING_DAYS))
-    split = SPLIT_BY_DAY_COUNT[training_days]
+    goal_splits = SPLIT_BY_GOAL_AND_DAYS.get(goal, SPLIT_BY_GOAL_AND_DAYS[PrimaryGoal.GENERAL_FITNESS])
+    split = goal_splits[training_days]
     training_indices = TRAINING_DAY_INDICES[training_days]
     exercises_per_day = _exercises_per_day(session_duration_minutes, goal=goal)
 

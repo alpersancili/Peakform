@@ -18,6 +18,8 @@ class MovementCategory(models.TextChoices):
     FULL_BODY = "full_body", "Full body"
     WARMUP = "warmup", "Warm-up"
     COOLDOWN = "cooldown", "Cool-down"
+    CONDITIONING = "conditioning", "Conditioning"
+    MOBILITY = "mobility", "Mobility"
 
 
 class MovementType(models.TextChoices):

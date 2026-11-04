@@ -72,3 +72,31 @@
     });
   });
 })();
+
+/**
+ * Equipment checkboxes on the plan-generator form: "No equipment" is
+ * exclusive with every other option, since picking a specific piece of
+ * equipment while also claiming to have none is contradictory input the
+ * generator would otherwise have to silently interpret.
+ */
+(function () {
+  const group = document.querySelector(".checkbox-group");
+  if (!group) return;
+
+  const boxes = group.querySelectorAll('input[type="checkbox"]');
+  const noneBox = group.querySelector('input[type="checkbox"][value="none"]');
+  if (!noneBox || boxes.length < 2) return;
+
+  group.addEventListener("change", function (event) {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.type !== "checkbox") return;
+
+    if (target === noneBox && target.checked) {
+      boxes.forEach(function (box) {
+        if (box !== noneBox) box.checked = false;
+      });
+    } else if (target !== noneBox && target.checked) {
+      noneBox.checked = false;
+    }
+  });
+})();

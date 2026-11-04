@@ -12,6 +12,15 @@ class PlanGenerateForm(forms.Form):
     session_duration_minutes = forms.IntegerField(min_value=15, max_value=180)
     equipment = forms.MultipleChoiceField(choices=Equipment.choices, widget=forms.CheckboxSelectMultiple, required=False)
 
+    def clean_equipment(self):
+        # "No equipment" is exclusive - if it's checked alongside anything
+        # else (the client-side JS normally prevents this, but a request
+        # could bypass it), treat it as authoritative and drop the rest.
+        equipment = self.cleaned_data.get("equipment") or []
+        if Equipment.NONE in equipment and len(equipment) > 1:
+            return [Equipment.NONE]
+        return equipment
+
 
 class SetLogForm(forms.ModelForm):
     class Meta:

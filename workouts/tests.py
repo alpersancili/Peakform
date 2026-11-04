@@ -150,18 +150,22 @@ class GenerationTests(TestCase):
         self.assertEqual(training_indices, {0, 1, 3, 4})
 
     def test_strength_goal_prescribes_fewer_reps_and_longer_rest(self):
+        # Strength and General fitness both use a "Full Body" split at 1
+        # day/week, so both sessions actually include push-category work
+        # to compare (Endurance's 1-day split is pure Conditioning work
+        # and intentionally never touches push/pull/legs at all).
         strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.STRENGTH, 1, 90)
-        endurance_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.ENDURANCE, 1, 90)
+        general_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 1, 90)
 
         strength_push = next(pe for pe in strength_days[0].exercises if pe.exercise.name == "Easy Push")
-        endurance_push = next(pe for pe in endurance_days[0].exercises if pe.exercise.name == "Easy Push")
+        general_push = next(pe for pe in general_days[0].exercises if pe.exercise.name == "Easy Push")
 
-        self.assertLess(strength_push.target_reps, endurance_push.target_reps)
-        self.assertGreater(strength_push.rest_seconds, endurance_push.rest_seconds)
+        self.assertLess(strength_push.target_reps, general_push.target_reps)
+        self.assertGreater(strength_push.rest_seconds, general_push.rest_seconds)
         # Unscaled baseline for reference: both started from the same exercise default.
         self.assertEqual(self.push_beginner.default_reps, 10)
         self.assertEqual(strength_push.target_reps, 6)
-        self.assertEqual(endurance_push.target_reps, 16)
+        self.assertEqual(general_push.target_reps, 10)
 
     def test_warmup_and_cooldown_are_not_goal_scaled(self):
         strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.STRENGTH, 1, 90)
@@ -182,7 +186,9 @@ class GenerationTests(TestCase):
         self.assertNotIn("push", categories)
 
     def test_legs_day_includes_core_work(self):
-        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.GENERAL_FITNESS, 3, 90)
+        # Only Skills gets a dedicated "Legs" day at 3 days/week in the
+        # goal-aware split (General fitness uses Full Body at 3 days).
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 3, 90)
         legs_day = next(d for d in days if d.label == "Legs")
         names = [pe.exercise.name for pe in legs_day.exercises]
         self.assertIn("Plank", names)
@@ -206,23 +212,61 @@ class GenerationTests(TestCase):
         main_exercises = [pe for pe in pull_day.exercises if pe.exercise.category not in ("warmup", "cooldown")]
         self.assertEqual(main_exercises[0].exercise.name, "Front Lever Tuck")
 
-    def test_strength_goal_fits_fewer_exercises_than_endurance_in_same_duration(self):
+    def test_strength_goal_fits_fewer_exercises_than_general_fitness_in_same_duration(self):
         # Strength's longer rest (1.6x) and extra set per exercise take much
-        # longer per exercise than endurance's shorter rest (0.6x) - packing
-        # the same exercise count into both would make a "60-minute"
-        # strength session actually take well over two hours of rest alone.
+        # longer per exercise than general fitness's baseline (1.0x) rest -
+        # packing the same exercise count into both would make a
+        # "60-minute" strength session actually take well over two hours
+        # of rest alone. Both use "Full Body" at 1 day/week so the pools
+        # are directly comparable (Endurance's split is pure Conditioning
+        # work, a different exercise pool entirely).
         strength_days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.STRENGTH, 1, 60)
-        endurance_days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.ENDURANCE, 1, 60)
+        general_days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.GENERAL_FITNESS, 1, 60)
 
         strength_main = [pe for pe in strength_days[0].exercises if pe.exercise.category not in ("warmup", "cooldown")]
-        endurance_main = [pe for pe in endurance_days[0].exercises if pe.exercise.category not in ("warmup", "cooldown")]
-        self.assertLess(len(strength_main), len(endurance_main))
+        general_main = [pe for pe in general_days[0].exercises if pe.exercise.category not in ("warmup", "cooldown")]
+        self.assertLess(len(strength_main), len(general_main))
 
     def test_skill_exercise_sequenced_before_other_main_exercises(self):
         days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 1, 90)
         day = days[0]
         main_exercises = [pe for pe in day.exercises if pe.exercise.category not in ("warmup", "cooldown")]
         self.assertEqual(main_exercises[0].exercise.name, "Handstand")
+
+    def test_endurance_goal_uses_conditioning_not_push_pull_legs(self):
+        conditioning = make_exercise("Burpee Test", "conditioning", reps=10)
+        exercises = self.all_exercises + [conditioning]
+        days = generate_plan_days(exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.ENDURANCE, 3, 60)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertTrue(all(d.label == "Conditioning" for d in training_days))
+        categories = {pe.exercise.category for d in training_days for pe in d.exercises}
+        self.assertEqual(categories - {"warmup", "cooldown"}, {"conditioning"})
+
+    def test_flexibility_goal_uses_mobility_not_push_pull_legs(self):
+        mobility = make_exercise("Hip Opener Test", "mobility", movement_type="hold", hold=30)
+        exercises = self.all_exercises + [mobility]
+        days = generate_plan_days(exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.FLEXIBILITY, 2, 45)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertTrue(all(d.label == "Mobility" for d in training_days))
+        categories = {pe.exercise.category for d in training_days for pe in d.exercises}
+        self.assertEqual(categories - {"warmup", "cooldown"}, {"mobility"})
+
+    def test_skills_goal_gets_dedicated_push_pull_split_even_at_two_days(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.SKILLS, 2, 60)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertEqual([d.label for d in training_days], ["Push", "Pull"])
+
+    def test_fat_loss_goal_alternates_full_body_and_conditioning(self):
+        conditioning = make_exercise("Burpee Test", "conditioning", reps=10)
+        exercises = self.all_exercises + [conditioning]
+        days = generate_plan_days(exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.FAT_LOSS, 3, 60)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertEqual([d.label for d in training_days], ["Full Body", "Conditioning", "Full Body"])
+
+    def test_strength_goal_uses_full_body_at_low_frequency_not_push_pull_legs(self):
+        days = generate_plan_days(self.all_exercises, ExperienceLevel.ADVANCED, [], PrimaryGoal.STRENGTH, 3, 60)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertEqual([d.label for d in training_days], ["Full Body", "Full Body", "Full Body"])
 
 
 class ProgressionTests(TestCase):
@@ -322,6 +366,15 @@ class PlanGenerateViewTests(TestCase):
         })
         self.assertEqual(WorkoutPlan.objects.filter(user=self.user, is_active=True).count(), 1)
         self.assertEqual(WorkoutPlan.objects.filter(user=self.user).count(), 2)
+
+    def test_no_equipment_is_exclusive_even_if_submitted_with_others(self):
+        self.client.post(reverse("workouts:plan_generate"), {
+            "goal": "general_fitness", "experience_level": "beginner",
+            "training_days_per_week": 3, "session_duration_minutes": 45,
+            "equipment": ["none", "pull_up_bar", "rings"],
+        })
+        plan = WorkoutPlan.objects.get(user=self.user)
+        self.assertEqual(plan.equipment, ["none"])
 
 
 class SessionFlowTests(TestCase):
