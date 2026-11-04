@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ session.plan_day.label|default:"Workout" }} complete &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>{{ session.plan_day.label|default:"Workout" }} complete</h1>
+      <p>{{ session.date }} &middot; Nice work.</p>
+    </div>
+
+    <div class="card">
+      <dl class="summary-grid">
+        {% if duration_minutes %}
+          <div><dt>Duration</dt><dd>{{ duration_minutes }} min</dd></div>
+        {% endif %}
+        <div><dt>Sets completed</dt><dd>{{ total_sets }}</dd></div>
+        {% if total_reps %}<div><dt>Total reps</dt><dd>{{ total_reps }}</dd></div>{% endif %}
+        {% if total_hold_seconds %}<div><dt>Total hold time</dt><dd>{{ total_hold_seconds }}s</dd></div>{% endif %}
+        {% if average_rpe %}<div><dt>Average RPE</dt><dd>{{ average_rpe }}</dd></div>{% endif %}
+      </dl>
+    </div>
+
+    {% if exercise_summaries %}
+      <h2 style="margin-top: var(--space-8);">Exercises</h2>
+      {% for row in exercise_summaries %}
+        <div class="card workout-exercise {% if row.is_new_record %}workout-exercise--done{% endif %}">
+          <div class="workout-exercise__header">
+            <div>
+              <h3>{{ row.exercise.name }}</h3>
+              {% if row.is_new_record %}
+                <p class="dashboard-card__note">New PR: {{ row.record_value }}{% if row.exercise.movement_type == "hold" %}s hold{% else %} reps{% endif %}</p>
+              {% endif %}
+            </div>
+          </div>
+          <ul class="set-log">
+            {% for log in row.logs %}
+              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; RPE {{ log.effort_rpe }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% if row.total_reps and row.previous_reps %}
+            <p class="dashboard-card__note">
+              {{ row.total_reps }} reps total
+              {% if row.total_reps > row.previous_reps %}&mdash; more than last time ({{ row.previous_reps }}){% elif row.total_reps < row.previous_reps %}&mdash; less than last time ({{ row.previous_reps }}){% else %}&mdash; same as last time{% endif %}
+            </p>
+          {% elif row.total_hold_seconds and row.previous_hold_seconds %}
+            <p class="dashboard-card__note">
+              {{ row.total_hold_seconds }}s hold total
+              {% if row.total_hold_seconds > row.previous_hold_seconds %}&mdash; more than last time ({{ row.previous_hold_seconds }}s){% elif row.total_hold_seconds < row.previous_hold_seconds %}&mdash; less than last time ({{ row.previous_hold_seconds }}s){% else %}&mdash; same as last time{% endif %}
+            </p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if session.notes %}
+      <div class="card">
+        <h3 style="margin-top: 0;">How it felt</h3>
+        <p style="margin: 0;">{{ session.notes }}</p>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <h3 style="margin-top: 0;">Recovery</h3>
+      <p style="margin: 0;">{{ recovery_suggestion }}</p>
+      <p class="dashboard-card__note">General fitness guidance, not medical advice.</p>
+    </div>
+
+    {% if next_day %}
+      <div class="card">
+        <h3 style="margin-top: 0;">Up next</h3>
+        <p class="dashboard-card__note">{{ next_day.label }} &middot; ~{{ next_day.estimated_minutes }} min &middot; {{ next_day.exercise_count }} exercises</p>
+      </div>
+    {% endif %}
+
+    <div class="profile-header__actions" style="margin-top: var(--space-6);">
+      <a class="btn btn--primary" href="{% url 'workouts:plan_overview' %}">Back to plan</a>
+      <a class="btn btn--ghost" href="{% url 'workouts:session_history' %}">View history</a>
+      {% if session.logs.all %}<a class="btn btn--ghost" href="{% url 'workouts:personal_records' %}">Personal records</a>{% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

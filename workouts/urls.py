@@ -11,6 +11,7 @@ urlpatterns = [
     path("sessions/<int:session_id>/", views.session_detail, name="session_detail"),
     path("sessions/<int:session_id>/log/<int:exercise_id>/", views.log_set, name="log_set"),
     path("sessions/<int:session_id>/complete/", views.session_complete, name="session_complete"),
+    path("sessions/<int:session_id>/summary/", views.session_summary, name="session_summary"),
     path("sessions/history/", views.session_history, name="session_history"),
     path("records/", views.personal_records, name="personal_records"),
     path("exercises/", views.exercise_library, name="exercise_library"),

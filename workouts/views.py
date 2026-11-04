@@ -30,7 +30,7 @@ from .models import (
     WorkoutSession,
 )
 from .personal_records import compute_personal_records, detect_new_records
-from .previous_performance import previous_session_set_map
+from .previous_performance import previous_session_set_map, previous_session_totals
 
 
 def _active_plan(user):
@@ -235,7 +235,87 @@ def session_complete(request, session_id):
         for challenge in evaluate_challenges(request.user):
             messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
 
-    return redirect("workouts:session_history")
+    return redirect("workouts:session_summary", session_id=session.id)
+
+
+def _recovery_suggestion(average_rpe):
+    if average_rpe is None:
+        return "Hydrate, refuel, and get a good night's sleep to support recovery."
+    if average_rpe >= 8:
+        return "That was a hard session — prioritize sleep, hydration, and protein today, and consider an easier day or rest before your next session."
+    if average_rpe >= 5:
+        return "Solid effort. Hydrate, refuel, and fit in some light mobility work before your next session."
+    return "A lighter session — a good chance to focus on technique and mobility before you ramp back up."
+
+
+@login_required
+def session_summary(request, session_id):
+    session = get_object_or_404(
+        WorkoutSession.objects.select_related("plan_day__plan"), id=session_id, user=request.user
+    )
+    if session.status != SessionStatus.COMPLETED:
+        return redirect("workouts:session_detail", session_id=session.id)
+
+    logs = list(session.logs.select_related("exercise").order_by("exercise__name", "set_number"))
+    logs_by_exercise = {}
+    for log in logs:
+        logs_by_exercise.setdefault(log.exercise, []).append(log)
+
+    new_record_values = dict(detect_new_records(request.user, session))
+
+    total_reps = 0
+    total_hold_seconds = 0
+    rpe_values = []
+    exercise_summaries = []
+    for exercise, ex_logs in logs_by_exercise.items():
+        exercise_reps = sum(log.reps for log in ex_logs if log.reps)
+        exercise_hold = sum(log.hold_seconds for log in ex_logs if log.hold_seconds)
+        total_reps += exercise_reps
+        total_hold_seconds += exercise_hold
+        rpe_values.extend(log.effort_rpe for log in ex_logs if log.effort_rpe)
+
+        previous_reps, previous_hold = previous_session_totals(request.user, exercise, session.id)
+        exercise_summaries.append(
+            {
+                "exercise": exercise,
+                "logs": ex_logs,
+                "total_reps": exercise_reps or None,
+                "total_hold_seconds": exercise_hold or None,
+                "previous_reps": previous_reps,
+                "previous_hold_seconds": previous_hold,
+                "is_new_record": exercise in new_record_values,
+                "record_value": new_record_values.get(exercise),
+            }
+        )
+    exercise_summaries.sort(key=lambda row: row["exercise"].name)
+
+    duration_minutes = None
+    if session.completed_at and session.started_at:
+        duration_minutes = round((session.completed_at - session.started_at).total_seconds() / 60)
+
+    next_day = None
+    if session.plan_day:
+        training_days = list(
+            session.plan_day.plan.days.exclude(is_rest_day=True).order_by("day_index")
+        )
+        if training_days:
+            current_index = session.plan_day.day_index
+            next_day = next(
+                (d for d in training_days if d.day_index > current_index), training_days[0]
+            )
+
+    context = {
+        "session": session,
+        "exercise_summaries": exercise_summaries,
+        "total_sets": len(logs),
+        "total_reps": total_reps or None,
+        "total_hold_seconds": total_hold_seconds or None,
+        "duration_minutes": duration_minutes,
+        "average_rpe": round(sum(rpe_values) / len(rpe_values), 1) if rpe_values else None,
+        "next_day": next_day,
+        "recovery_suggestion": _recovery_suggestion(sum(rpe_values) / len(rpe_values) if rpe_values else None),
+    }
+    return render(request, "workouts/session_summary.html", context)
 
 
 @login_required
