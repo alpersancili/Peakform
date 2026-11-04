@@ -8,47 +8,72 @@ See [docs/Peakform.md](docs/Peakform.md) for the full product brief.
 
 ## Status
 
-**MVP complete (Phases 1–8).** Django project with environment-driven
-configuration, a responsive, accessible base template and design system
-(light/dark, keyboard-navigable, skip link), the landing page,
+**MVP complete (Phases 1–8), plus a full round of post-MVP features.**
+Django project with environment-driven configuration, a responsive,
+accessible base template and design system (light/dark,
+keyboard-navigable, skip link), the landing page,
 authentication/onboarding/profiles, nutrition calculations (BMI/BMR/
-TDEE/macros) with a food diary and water/step trackers, Gemini-powered
-natural-language food logging with validated, editable estimates, a
-calisthenics workout planner with guided sessions and progressive
-overload, streaks/weekly goals/badges, a public community feed (posts,
-images, likes, threaded comments, following, profiles, reporting and
-admin moderation), progress tracking (weight and optional body
-measurement history, a weight trend, calorie-target consistency over
-the last 7 days, and water/step trends, alongside workout history and
-streaks), Supabase Storage for durable image uploads, and production
-deployment configuration (gunicorn, WhiteNoise static files, HTTPS/
-HSTS/secure-cookie hardening, console logging), and a conversational
-AI coach grounded in the user's real logged data (profile, nutrition
+TDEE/macros) with a food diary and water/step trackers, a calisthenics
+workout planner with guided sessions and progressive overload,
+streaks/weekly goals/badges, a public community feed (posts, images,
+likes, threaded comments, following, profiles, reporting and admin
+moderation), progress tracking (weight and optional body measurement
+history, a weight trend, calorie-target consistency over the last 7
+days, and water/step trends, alongside workout history and streaks),
+Supabase Storage for durable image uploads, and production deployment
+configuration (gunicorn, WhiteNoise static files, HTTPS/HSTS/
+secure-cookie hardening, console logging), and a conversational AI
+coach grounded in the user's real logged data (profile, nutrition
 targets vs. today's intake, active workout plan and history, streak,
 weight trend) rather than invented numbers - it asks for missing
 information instead of guessing, avoids diagnosing medical conditions,
-and never promises specific results or timelines. 192 automated tests
+and never promises specific results or timelines. 269 automated tests
 cover the deterministic calculation logic, generation algorithms, and
 server-side permission checks across every app.
 
-**Exercise library:** 46 exercises (including full dips, hanging leg
-raises, and complete planche/front lever/one-arm-handstand
-progressions, not just their tuck/lean entry points), each with a real
+**AI-assisted nutrition and training:** Gemini-powered natural-language
+food logging and a meal-photo scanner (both with validated, editable
+estimates before anything is logged), and an AI-assisted workout plan
+generator that designs a full 7-day training cycle from the user's
+goal/experience/equipment/availability - constrained to only reference
+exercises that already pass equipment and experience filtering, with
+every id and prescription value server-validated, and falling back to
+a deterministic rule-based generator whenever the AI is unconfigured,
+rate-limited, or returns anything invalid.
+
+**Progress, records, and motivation:** a progress-photo gallery with
+before/after comparison, automatic personal-record detection (best
+reps or hold per exercise) with in-session "New PR" callouts, a
+searchable/filterable exercise library, and an XP/leveling system with
+weekly challenges layered on top of the MVP's badges and streaks.
+
+**Structured programs:** three hand-curated, named training programs
+(Skill-focused, Strength & Hypertrophy, Mixed Training), each at
+Easy/Intermediate/Difficult tiers, browsable day-by-day and
+one-click-startable into a fully tracked plan - plus a meal planner for
+scheduling food ahead of the diary and logging it as eaten with one
+click.
+
+**Exercise library:** 81 exercises (including full dips, hanging leg
+raises, complete planche/front lever/one-arm-handstand progressions,
+dedicated conditioning and mobility pools, and more), each with a real
 YouTube demonstration URL where one could be confidently sourced
 (individually verified, never guessed/fabricated) or detailed written
 instructions where one couldn't. Workout generation scales sets/reps/
-rest to the user's actual goal (strength vs. endurance vs. skills
-genuinely differ, not just in which exercises are picked), spreads
-training days across the week instead of clustering them, and
-sequences skill work first in a session while fresh.
+rest to the user's actual goal and varies the weekly split structure
+itself by goal (Skills gets dedicated Push/Pull days; Endurance and
+Flexibility get genuine Conditioning/Mobility sessions, not a
+relabeled strength split), spreads training days across the week
+instead of clustering them, and sequences skill work first in a
+session while fresh.
 
-**Deferred to a future release** (per the brief's section 5 — not MVP
-scope): AI food photo recognition, calisthenics skill roadmaps, an
-advanced AI coach with weekly summaries, automated recovery analysis
-from logged sleep/soreness trends, and expanded gamification (weekly
-and community challenges). The architecture doesn't block adding these
-later — e.g. `RecoveryNote` already exists for the manual version that
-automated recovery analysis would build on.
+**Not yet built:** self-service password reset (removed after
+shipping it, since the email provider's free tier can't deliver to
+real users without a verified domain), calisthenics skill roadmaps as
+their own guided feature (the curated programs and personal records
+cover much of the same ground), automated recovery analysis from
+logged sleep/soreness trends (manual `RecoveryNote` logging exists
+today), and device integrations.
 
 Seed reference data after migrating:
 
@@ -64,7 +89,7 @@ python manage.py seed_challenges
 
 - **Backend:** Python 3 + Django
 - **Database:** PostgreSQL (Supabase in production), SQLite for local dev
-- **AI:** Google Gemini API (natural-language food logging)
+- **AI:** Google Gemini API (natural-language and photo food logging, conversational coach, AI-assisted workout plan generation)
 - **Frontend:** Django templates, vanilla CSS/JS (no frontend framework)
 - **Static files:** WhiteNoise
 - **Deployment:** Railway/Render-style Django hosting (not Vercel — see
@@ -101,7 +126,7 @@ left unset.
 | `DJANGO_SECURE_SSL_REDIRECT` | `True` in production to redirect HTTP to HTTPS (default `True`; the host's load balancer must forward `X-Forwarded-Proto`). |
 | `DJANGO_LOG_LEVEL` | Console log level in production (`INFO` by default; `DEBUG` for more verbose troubleshooting). |
 | `DATABASE_URL` | Postgres connection string (Supabase). Unset = local SQLite. |
-| `GEMINI_API_KEY` | Google Gemini API key for the AI nutrition assistant. Unset = the feature is disabled with a clear in-app message; nothing else breaks. |
+| `GEMINI_API_KEY` | Google Gemini API key, shared by the AI nutrition assistant, the AI coach, and AI-assisted workout plan generation. Unset = each feature is disabled with a clear in-app message (or a deterministic fallback, for workout plans); nothing else breaks. |
 | `GEMINI_MODEL` | Gemini model id (default `gemini-3.1-flash-lite`). |
 | `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
 | `COACH_DAILY_LIMIT` | Max AI coach messages per user per day (default `30`). |
@@ -186,3 +211,7 @@ templates/      Shared base template
 static/         Design system CSS and JS
 docs/           Product brief
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
