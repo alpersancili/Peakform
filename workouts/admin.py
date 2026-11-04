@@ -8,6 +8,7 @@ from .models import (
     ProgramTemplateExercise,
     RecoveryNote,
     WorkoutPlan,
+    WorkoutPlanAIRequest,
     WorkoutPlanDay,
     WorkoutPlanExercise,
     WorkoutSession,
@@ -71,3 +72,8 @@ class ProgramTemplateAdmin(admin.ModelAdmin):
 class ProgramTemplateExerciseAdmin(admin.ModelAdmin):
     list_display = ("day", "exercise", "prescription")
     list_filter = ("day__difficulty",)
+
+
+@admin.register(WorkoutPlanAIRequest)
+class WorkoutPlanAIRequestAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at")

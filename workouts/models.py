@@ -330,3 +330,17 @@ class ProgramTemplateExercise(models.Model):
 
     def __str__(self):
         return f"{self.exercise.name} ({self.prescription})"
+
+
+class WorkoutPlanAIRequest(models.Model):
+    """One attempted call to the AI plan generator, for rate limiting.
+
+    Recorded before the Gemini call is made (not just on success) so a
+    user cannot bypass the daily limit by regenerating repeatedly.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workout_ai_requests")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

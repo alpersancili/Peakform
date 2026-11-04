@@ -226,6 +226,24 @@ def _to_planned_exercise(exercise, goal=None):
     return PlannedExercise(exercise=exercise, target_sets=sets, target_reps=reps, target_hold_seconds=hold, rest_seconds=rest)
 
 
+def warmup_cooldown_pools(all_exercises, equipment):
+    """The equipment-eligible warm-up and cool-down exercise pools, sorted
+    for deterministic selection. Shared by the rule-based generator and
+    the AI-assisted one (see ai_client.py) - warm-up/cool-down stays the
+    same reliable, well-tested boilerplate regardless of which picks the
+    main exercises.
+    """
+    warmup_pool = sorted(
+        [ex for ex in all_exercises if ex.category == MovementCategory.WARMUP and ex.suits_equipment(equipment)],
+        key=lambda e: e.id,
+    )
+    cooldown_pool = sorted(
+        [ex for ex in all_exercises if ex.category == MovementCategory.COOLDOWN and ex.suits_equipment(equipment)],
+        key=lambda e: e.id,
+    )
+    return warmup_pool, cooldown_pool
+
+
 def generate_plan_days(all_exercises, experience_level, equipment, goal, training_days_per_week, session_duration_minutes):
     """Build a 7-day plan cycle. Returns a list of 7 PlannedDay objects.
 
@@ -238,14 +256,7 @@ def generate_plan_days(all_exercises, experience_level, equipment, goal, trainin
     training_indices = TRAINING_DAY_INDICES[training_days]
     exercises_per_day = _exercises_per_day(session_duration_minutes, goal=goal)
 
-    warmup_pool = sorted(
-        [ex for ex in all_exercises if ex.category == MovementCategory.WARMUP and ex.suits_equipment(equipment)],
-        key=lambda e: e.id,
-    )
-    cooldown_pool = sorted(
-        [ex for ex in all_exercises if ex.category == MovementCategory.COOLDOWN and ex.suits_equipment(equipment)],
-        key=lambda e: e.id,
-    )
+    warmup_pool, cooldown_pool = warmup_cooldown_pools(all_exercises, equipment)
 
     days = []
     for day_index in range(7):

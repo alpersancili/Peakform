@@ -201,6 +201,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 GEMINI_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_LIMIT", "20"))
 COACH_DAILY_LIMIT = int(os.environ.get("COACH_DAILY_LIMIT", "30"))
+WORKOUT_AI_DAILY_LIMIT = int(os.environ.get("WORKOUT_AI_DAILY_LIMIT", "10"))
 
 
 # Security hardening for production (no-ops locally when DEBUG is True).

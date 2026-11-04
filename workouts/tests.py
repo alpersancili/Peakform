@@ -1,9 +1,17 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
 
+from .ai_client import (
+    WorkoutAIConfigurationError,
+    WorkoutAIResponseError,
+    generate_plan_with_ai,
+)
+from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .generation import generate_plan_days, suggest_progression
 from .models import (
     Exercise,
@@ -14,6 +22,7 @@ from .models import (
     RecoveryNote,
     SessionStatus,
     WorkoutPlan,
+    WorkoutPlanAIRequest,
     WorkoutPlanDay,
     WorkoutPlanExercise,
     WorkoutSession,
@@ -697,3 +706,177 @@ class RecoveryNoteTests(TestCase):
         self.assertEqual(RecoveryNote.objects.filter(user=self.user).count(), 1)
         note.refresh_from_db()
         self.assertEqual(note.sleep_quality, 2)
+
+
+def _gemini_days_envelope(raw_days):
+    import json
+
+    return {"candidates": [{"content": {"parts": [{"text": json.dumps(raw_days)}]}}]}
+
+
+def _full_valid_days(push_id, pull_id, legs_id, training_indices=(0, 2, 4)):
+    """7 day entries: every training day uses all of push/pull/legs (at
+    least MIN_EXERCISES_PER_DAY=3 so each day validates), everything else
+    is a rest day. Matches training_days_per_week=3."""
+    ids = [push_id, pull_id, legs_id]
+    days = []
+    for day_index in range(7):
+        if day_index in training_indices:
+            days.append({
+                "day_index": day_index, "label": "Training", "is_rest_day": False,
+                "exercises": [{"exercise_id": ex_id, "sets": 3, "reps": 10, "rest_seconds": 60} for ex_id in ids],
+            })
+        else:
+            days.append({"day_index": day_index, "label": "Rest", "is_rest_day": True, "exercises": []})
+    return days
+
+
+class WorkoutAIClientTests(TestCase):
+    def setUp(self):
+        self.push = make_exercise("Push-up", "push", reps=10)
+        self.pull = make_exercise("Table Row", "pull", reps=10)
+        self.legs = make_exercise("Squat", "legs", reps=10)
+        self.all_exercises = list(Exercise.objects.all())
+
+    def test_raises_configuration_error_without_api_key(self):
+        with self.assertRaises(WorkoutAIConfigurationError):
+            generate_plan_with_ai(
+                self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="",
+            )
+
+    @patch("workouts.ai_client._call_gemini")
+    def test_valid_response_builds_seven_days_with_warmup_and_cooldown(self, mock_call):
+        warmup = make_exercise("Arm Circles", "warmup", reps=20)
+        cooldown = make_exercise("Quad Stretch", "cooldown", movement_type="hold", hold=30)
+        all_exercises = self.all_exercises + [warmup, cooldown]
+
+        raw_days = _full_valid_days(self.push.id, self.pull.id, self.legs.id)
+        mock_call.return_value = _gemini_days_envelope(raw_days)
+
+        days = generate_plan_with_ai(
+            all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="test-key",
+        )
+        self.assertEqual(len(days), 7)
+        training_days = [d for d in days if not d.is_rest_day]
+        self.assertEqual(len(training_days), 3)
+        for day in training_days:
+            names = [pe.exercise.name for pe in day.exercises]
+            self.assertIn("Arm Circles", names)
+            self.assertIn("Quad Stretch", names)
+
+    @patch("workouts.ai_client._call_gemini")
+    def test_wrong_training_day_count_raises_and_does_not_silently_change_it(self, mock_call):
+        # Only 2 of the 7 days are training, but the caller asked for 3 -
+        # the response must be rejected rather than silently using 2.
+        raw_days = _full_valid_days(self.push.id, self.pull.id, self.legs.id, training_indices=(0, 2))
+        mock_call.return_value = _gemini_days_envelope(raw_days)
+
+        with self.assertRaises(WorkoutAIResponseError):
+            generate_plan_with_ai(
+                self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="test-key",
+            )
+
+    @patch("workouts.ai_client._call_gemini")
+    def test_unknown_exercise_id_is_dropped_not_trusted(self, mock_call):
+        raw_days = _full_valid_days(self.push.id, self.pull.id, self.legs.id)
+        # Sneak in a bogus id alongside a valid one on day 0.
+        raw_days[0]["exercises"].append({"exercise_id": 999999, "sets": 3, "reps": 10, "rest_seconds": 60})
+        mock_call.return_value = _gemini_days_envelope(raw_days)
+
+        days = generate_plan_with_ai(
+            self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="test-key",
+        )
+        day0 = next(d for d in days if d.day_index == 0)
+        ids_used = {pe.exercise.id for pe in day0.exercises}
+        self.assertNotIn(999999, ids_used)
+
+    @patch("workouts.ai_client._call_gemini")
+    def test_out_of_range_prescription_values_are_clamped(self, mock_call):
+        raw_days = _full_valid_days(self.push.id, self.pull.id, self.legs.id)
+        raw_days[0]["exercises"][0] = {"exercise_id": self.push.id, "sets": 999, "reps": 999, "rest_seconds": 999999}
+        mock_call.return_value = _gemini_days_envelope(raw_days)
+
+        days = generate_plan_with_ai(
+            self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="test-key",
+        )
+        day0 = next(d for d in days if d.day_index == 0)
+        main = [pe for pe in day0.exercises if pe.exercise.id == self.push.id][0]
+        self.assertLessEqual(main.target_sets, 6)
+        self.assertLessEqual(main.target_reps, 50)
+        self.assertLessEqual(main.rest_seconds, 240)
+
+    @patch("workouts.ai_client._call_gemini")
+    def test_malformed_json_raises_response_error(self, mock_call):
+        mock_call.return_value = {"candidates": [{"content": {"parts": [{"text": "not json"}]}}]}
+        with self.assertRaises(WorkoutAIResponseError):
+            generate_plan_with_ai(
+                self.all_exercises, ExperienceLevel.BEGINNER, [], PrimaryGoal.GENERAL_FITNESS, 3, 45, api_key="test-key",
+            )
+
+
+class WorkoutAIRateLimitTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
+
+    def test_remaining_decreases_with_use(self):
+        self.assertEqual(requests_remaining_today(self.user), 10)
+        record_attempt_or_raise(self.user)
+        self.assertEqual(requests_remaining_today(self.user), 9)
+
+    @override_settings(WORKOUT_AI_DAILY_LIMIT=2)
+    def test_raises_once_daily_limit_is_reached(self):
+        record_attempt_or_raise(self.user)
+        record_attempt_or_raise(self.user)
+        with self.assertRaises(RateLimitExceeded):
+            record_attempt_or_raise(self.user)
+        self.assertEqual(WorkoutPlanAIRequest.objects.filter(user=self.user).count(), 2)
+
+
+@override_settings(GEMINI_API_KEY="test-key")
+class PlanGenerateAIIntegrationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.push = make_exercise("Push-up", "push", reps=10)
+        self.pull = make_exercise("Table Row", "pull", reps=10)
+        self.legs = make_exercise("Squat", "legs", reps=10)
+        make_exercise("Warmup A", "warmup", reps=20)
+        make_exercise("Cooldown A", "cooldown", movement_type="hold", hold=30)
+
+    @patch("workouts.views.generate_plan_with_ai")
+    def test_uses_ai_plan_when_available(self, mock_generate):
+        from .generation import PlannedDay, PlannedExercise
+
+        mock_generate.return_value = [
+            PlannedDay(day_index=i, label="Rest", is_rest_day=True) for i in range(7)
+        ]
+        mock_generate.return_value[0] = PlannedDay(
+            day_index=0, label="AI Day", is_rest_day=False,
+            exercises=[PlannedExercise(exercise=self.push, target_sets=3, target_reps=10, target_hold_seconds=None, rest_seconds=60)],
+        )
+        response = self.client.post(reverse("workouts:plan_generate"), {
+            "goal": "general_fitness", "experience_level": "beginner",
+            "training_days_per_week": 1, "session_duration_minutes": 45, "equipment": [],
+        }, follow=True)
+        self.assertContains(response, "AI-personalized")
+        plan = WorkoutPlan.objects.get(user=self.user)
+        self.assertEqual(plan.days.get(day_index=0).label, "AI Day")
+
+    @patch("workouts.views.generate_plan_with_ai", side_effect=WorkoutAIConfigurationError("not configured"))
+    def test_falls_back_to_deterministic_generator_on_ai_failure(self, mock_generate):
+        response = self.client.post(reverse("workouts:plan_generate"), {
+            "goal": "general_fitness", "experience_level": "beginner",
+            "training_days_per_week": 3, "session_duration_minutes": 45, "equipment": [],
+        }, follow=True)
+        self.assertNotContains(response, "AI-personalized")
+        self.assertContains(response, "Your workout plan is ready")
+        self.assertTrue(WorkoutPlan.objects.filter(user=self.user).exists())
+
+    @patch("workouts.views.workout_ai_record_attempt_or_raise", side_effect=RateLimitExceeded(retry_after=None))
+    def test_falls_back_with_message_when_rate_limited(self, mock_record):
+        response = self.client.post(reverse("workouts:plan_generate"), {
+            "goal": "general_fitness", "experience_level": "beginner",
+            "training_days_per_week": 3, "session_duration_minutes": 45, "equipment": [],
+        }, follow=True)
+        self.assertContains(response, "today&#x27;s limit")
+        self.assertTrue(WorkoutPlan.objects.filter(user=self.user).exists())

@@ -105,6 +105,7 @@ left unset.
 | `GEMINI_MODEL` | Gemini model id (default `gemini-3.1-flash-lite`). |
 | `GEMINI_DAILY_LIMIT` | Max AI food-logging requests per user per day (default `20`), to bound cost and abuse. |
 | `COACH_DAILY_LIMIT` | Max AI coach messages per user per day (default `30`). |
+| `WORKOUT_AI_DAILY_LIMIT` | Max AI-personalized workout plan generations per user per day (default `10`). Uses the same `GEMINI_API_KEY`; when unset or over the limit, plan generation silently falls back to the deterministic rule-based generator. |
 | `SUPABASE_S3_ACCESS_KEY_ID` / `SUPABASE_S3_SECRET_ACCESS_KEY` | Supabase Storage S3 credentials, from Project Settings -> Storage -> S3 Connection. Unset = uploads go to local disk. |
 | `SUPABASE_S3_ENDPOINT_URL` | e.g. `https://<ref>.storage.supabase.co/storage/v1/s3`, from the same S3 Connection page. |
 | `SUPABASE_S3_REGION` | Your Supabase project's region, e.g. `eu-central-1`. |

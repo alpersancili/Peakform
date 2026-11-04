@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -9,6 +10,9 @@ from motivation.badges import evaluate_badges
 from motivation.challenges import evaluate_challenges
 from motivation.xp import XP_PER_COMPLETED_WORKOUT, award_xp
 
+from .ai_client import WorkoutAIError, generate_plan_with_ai
+from .ai_rate_limit import RateLimitExceeded as WorkoutAIRateLimitExceeded
+from .ai_rate_limit import record_attempt_or_raise as workout_ai_record_attempt_or_raise
 from .forms import PlanGenerateForm, RecoveryNoteForm, SetLogForm
 from .generation import generate_plan_days, suggest_progression
 from .models import (
@@ -48,14 +52,35 @@ def plan_generate(request):
         if form.is_valid():
             data = form.cleaned_data
             all_exercises = list(Exercise.objects.all())
-            planned_days = generate_plan_days(
-                all_exercises=all_exercises,
-                experience_level=data["experience_level"],
-                equipment=data["equipment"],
-                goal=data["goal"],
-                training_days_per_week=data["training_days_per_week"],
-                session_duration_minutes=data["session_duration_minutes"],
-            )
+
+            planned_days = None
+            used_ai = False
+            if settings.GEMINI_API_KEY:
+                try:
+                    workout_ai_record_attempt_or_raise(request.user)
+                    planned_days = generate_plan_with_ai(
+                        all_exercises=all_exercises,
+                        experience_level=data["experience_level"],
+                        equipment=data["equipment"],
+                        goal=data["goal"],
+                        training_days_per_week=data["training_days_per_week"],
+                        session_duration_minutes=data["session_duration_minutes"],
+                    )
+                    used_ai = True
+                except WorkoutAIRateLimitExceeded:
+                    messages.info(request, "AI personalization is at today's limit, so this plan was built with our standard generator instead.")
+                except WorkoutAIError:
+                    pass  # fall back silently - plan generation must never just fail
+
+            if planned_days is None:
+                planned_days = generate_plan_days(
+                    all_exercises=all_exercises,
+                    experience_level=data["experience_level"],
+                    equipment=data["equipment"],
+                    goal=data["goal"],
+                    training_days_per_week=data["training_days_per_week"],
+                    session_duration_minutes=data["session_duration_minutes"],
+                )
 
             WorkoutPlan.objects.filter(user=request.user, is_active=True).update(is_active=False)
             plan = WorkoutPlan.objects.create(
@@ -82,7 +107,10 @@ def plan_generate(request):
                         rest_seconds=planned_exercise.rest_seconds,
                     )
 
-            messages.success(request, "Your workout plan is ready.")
+            if used_ai:
+                messages.success(request, "Your AI-personalized workout plan is ready.")
+            else:
+                messages.success(request, "Your workout plan is ready.")
             return redirect("workouts:plan_overview")
     else:
         form = PlanGenerateForm(initial=initial)
