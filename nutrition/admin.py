@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Food, MealEntry, PlannedMeal, StepLog, WaterLog
+from .models import Food, MealEntry, StepLog, WaterLog
 
 
 @admin.register(Food)
@@ -26,10 +26,3 @@ class WaterLogAdmin(admin.ModelAdmin):
 class StepLogAdmin(admin.ModelAdmin):
     list_display = ("user", "date", "step_count")
     list_filter = ("date",)
-
-
-@admin.register(PlannedMeal)
-class PlannedMealAdmin(admin.ModelAdmin):
-    list_display = ("user", "food", "meal_category", "date", "quantity")
-    list_filter = ("meal_category", "date")
-    search_fields = ("user__username", "food__name")

@@ -16,8 +16,8 @@ from motivation.streaks import calculate_current_streak
 from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description, parse_food_photo
 from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import calculate_bmi, calculate_daily_targets
-from .forms import CustomFoodForm, MealEntryForm, PlannedMealForm, StepLogForm, WaterQuickAddForm
-from .models import Food, MealCategory, MealEntry, PlannedMeal, StepLog, WaterLog
+from .forms import CustomFoodForm, MealEntryForm, StepLogForm, WaterQuickAddForm
+from .models import Food, MealCategory, MealEntry, StepLog, WaterLog
 
 WEEKLY_CHART_DAYS = 7
 AI_SESSION_KEY = "ai_pending_food_items"
@@ -114,7 +114,7 @@ def add_meal_entry(request, food_id):
     back_to_search = f"{search_url}?q={quote(query)}" if query else search_url
 
     if request.method == "POST":
-        form = MealEntryForm(request.POST)
+        form = MealEntryForm(request.POST, food=food)
         if form.is_valid():
             entry = form.save(commit=False)
             entry.user = request.user
@@ -376,72 +376,3 @@ def ai_food_log_review(request):
     return render(request, "nutrition/ai_food_log_review.html", {"rows": rows})
 
 
-PLANNER_DAYS = 7
-
-
-@login_required
-def meal_planner(request):
-    today = timezone.localdate()
-    end_date = today + timedelta(days=PLANNER_DAYS - 1)
-
-    planned = list(
-        PlannedMeal.objects.filter(user=request.user, date__gte=today, date__lte=end_date)
-        .select_related("food")
-    )
-    planned_by_date = {}
-    for meal in planned:
-        planned_by_date.setdefault(meal.date, []).append(meal)
-
-    days = []
-    for offset in range(PLANNER_DAYS):
-        day = today + timedelta(days=offset)
-        meals = planned_by_date.get(day, [])
-        days.append({"date": day, "meals": meals, "total_calories": round(sum(m.calories for m in meals))})
-
-    return render(request, "nutrition/meal_planner.html", {"days": days, "today": today})
-
-
-@login_required
-def plan_meal_add(request, food_id):
-    food = get_object_or_404(Food, id=food_id)
-    search_url = reverse("nutrition:food_search")
-    query = request.POST.get("q", "")
-    back_to_search = f"{search_url}?q={quote(query)}" if query else search_url
-
-    if request.method == "POST":
-        form = PlannedMealForm(request.POST)
-        if form.is_valid():
-            plan = form.save(commit=False)
-            plan.user = request.user
-            plan.food = food
-            plan.save()
-            messages.success(request, f"Added {food.name} to your meal plan for {plan.date}.")
-            return redirect("nutrition:meal_planner")
-        messages.error(request, "Couldn't add that to your plan. Check the date and quantity.")
-    return redirect(back_to_search)
-
-
-@login_required
-def plan_meal_log(request, planned_id):
-    planned = get_object_or_404(PlannedMeal, id=planned_id, user=request.user)
-    if request.method == "POST":
-        entry = MealEntry(
-            user=request.user, food=planned.food, meal_category=planned.meal_category, quantity=planned.quantity
-        )
-        entry.save()
-        planned.delete()
-        messages.success(request, f"Logged {entry.food.name}.")
-        for badge in evaluate_badges(request.user):
-            messages.success(request, f"New badge: {badge.name}!")
-        for challenge in evaluate_challenges(request.user):
-            messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
-    return redirect("nutrition:meal_planner")
-
-
-@login_required
-def plan_meal_delete(request, planned_id):
-    planned = get_object_or_404(PlannedMeal, id=planned_id, user=request.user)
-    if request.method == "POST":
-        planned.delete()
-        messages.success(request, "Removed from your meal plan.")
-    return redirect("nutrition:meal_planner")

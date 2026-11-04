@@ -17,8 +17,4 @@ urlpatterns = [
     path("ai/", views.ai_food_log, name="ai_food_log"),
     path("ai/photo/", views.ai_food_photo, name="ai_food_photo"),
     path("ai/review/", views.ai_food_log_review, name="ai_food_log_review"),
-    path("planner/", views.meal_planner, name="meal_planner"),
-    path("planner/add/<int:food_id>/", views.plan_meal_add, name="plan_meal_add"),
-    path("planner/<int:planned_id>/log/", views.plan_meal_log, name="plan_meal_log"),
-    path("planner/<int:planned_id>/delete/", views.plan_meal_delete, name="plan_meal_delete"),
 ]
