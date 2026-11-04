@@ -11,11 +11,14 @@ Gemini - no SDK dependency for one API call.
 """
 
 import json
+import logging
 import urllib.error
 import urllib.request
 
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
+
+logger = logging.getLogger(__name__)
 
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 REQUEST_TIMEOUT_SECONDS = 15
@@ -31,6 +34,7 @@ class ResendAPIBackend(BaseEmailBackend):
             if not self.fail_silently:
                 raise ValueError("RESEND_API_KEY is not set.")
             return 0
+        logger.info("ResendAPIBackend: sending %d message(s) with key prefix %s...", len(email_messages), api_key[:6])
 
         sent_count = 0
         for message in email_messages:
@@ -58,9 +62,18 @@ class ResendAPIBackend(BaseEmailBackend):
         )
         try:
             with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-                response.read()
+                status = response.status
+                body = response.read().decode("utf-8", errors="replace")
+            logger.info("ResendAPIBackend: to=%s status=%s body=%s", payload["to"], status, body[:500])
             return True
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace")
+            logger.error("ResendAPIBackend: HTTP %s from Resend for to=%s: %s", exc.code, payload["to"], error_body[:500])
+            if not self.fail_silently:
+                raise
+            return False
+        except (urllib.error.URLError, TimeoutError) as exc:
+            logger.error("ResendAPIBackend: network error for to=%s: %s", payload["to"], exc)
             if not self.fail_silently:
                 raise
             return False
