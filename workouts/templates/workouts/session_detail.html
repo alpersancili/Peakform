@@ -50,6 +50,27 @@
           {% endif %}
         </details>
 
+        <details class="exercise-details">
+          <summary>Can't do this exercise?</summary>
+          <form method="post" action="{% url 'workouts:substitute_exercise' session.id pe.id %}" class="substitute-form">
+            {% csrf_token %}
+            <label>
+              Why?
+              <select name="reason">
+                <option value="no_equipment">I don't have the equipment</option>
+                <option value="too_difficult">Too difficult right now</option>
+                <option value="discomfort">Causes discomfort</option>
+                <option value="preference">I'd rather do something else</option>
+              </select>
+            </label>
+            {% if ex.easier_variation %}
+              <button class="btn btn--ghost btn--sm" type="submit">Substitute for {{ ex.easier_variation.name }}</button>
+            {% else %}
+              <button class="btn btn--ghost btn--sm" type="submit">Request substitution</button>
+            {% endif %}
+          </form>
+        </details>
+
         {% if logs %}
           <ul class="set-log">
             {% for log in logs %}

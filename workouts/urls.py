@@ -10,6 +10,11 @@ urlpatterns = [
     path("sessions/start/<int:day_id>/", views.session_start, name="session_start"),
     path("sessions/<int:session_id>/", views.session_detail, name="session_detail"),
     path("sessions/<int:session_id>/log/<int:exercise_id>/", views.log_set, name="log_set"),
+    path(
+        "sessions/<int:session_id>/exercises/<int:plan_exercise_id>/substitute/",
+        views.substitute_exercise,
+        name="substitute_exercise",
+    ),
     path("sessions/<int:session_id>/complete/", views.session_complete, name="session_complete"),
     path("sessions/<int:session_id>/summary/", views.session_summary, name="session_summary"),
     path("sessions/history/", views.session_history, name="session_history"),

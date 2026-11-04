@@ -638,6 +638,17 @@ p { margin: 0 0 var(--space-4); color: var(--color-body); }
 .exercise-details summary { cursor: pointer; font-weight: 600; color: var(--color-ink); }
 .exercise-details p { margin: var(--space-2) 0 0; }
 
+.substitute-form { display: flex; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-2); }
+.substitute-form label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 0.85rem; color: var(--color-body); }
+.substitute-form select {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  min-height: 40px;
+}
+
 .set-log { font-size: 0.85rem; color: var(--color-body); margin: var(--space-3) 0; }
 .set-log li { padding: var(--space-1) 0; }
 

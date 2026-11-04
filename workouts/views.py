@@ -199,6 +199,52 @@ def log_set(request, session_id, exercise_id):
     return redirect("workouts:session_detail", session_id=session.id)
 
 
+SUBSTITUTION_REASONS = {
+    "no_equipment": "I don't have the equipment",
+    "too_difficult": "Too difficult right now",
+    "discomfort": "Causes discomfort",
+    "preference": "I'd rather do something else",
+}
+
+
+@login_required
+def substitute_exercise(request, session_id, plan_exercise_id):
+    session = get_object_or_404(WorkoutSession, id=session_id, user=request.user)
+    plan_exercise = get_object_or_404(
+        WorkoutPlanExercise, id=plan_exercise_id, plan_day__plan__user=request.user
+    )
+
+    if request.method == "POST":
+        reason = request.POST.get("reason", "")
+        if reason == "discomfort":
+            messages.warning(
+                request,
+                "If a movement causes pain, stop and consider getting guidance from a qualified "
+                "professional before continuing — don't train through it.",
+            )
+
+        alternative = plan_exercise.exercise.easier_variation
+        if alternative:
+            original_name = plan_exercise.exercise.name
+            plan_exercise.exercise = alternative
+            plan_exercise.save(update_fields=["exercise"])
+            reason_label = SUBSTITUTION_REASONS.get(reason)
+            suffix = f" ({reason_label.lower()})" if reason_label else ""
+            messages.success(
+                request,
+                f"Swapped {original_name} for {alternative.name}{suffix}. "
+                "This applies to future sessions of this plan too.",
+            )
+        else:
+            messages.info(
+                request,
+                f"No substitute is set up for {plan_exercise.exercise.name} yet — "
+                "try the exercise library for a similar movement.",
+            )
+
+    return redirect("workouts:session_detail", session_id=session.id)
+
+
 @login_required
 def session_complete(request, session_id):
     session = get_object_or_404(WorkoutSession, id=session_id, user=request.user)

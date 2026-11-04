@@ -458,6 +458,65 @@ class SessionFlowTests(TestCase):
         self.assertEqual(session.notes, "Felt good")
         self.assertEqual(self.plan_exercise.target_reps, 11)
 
+    def test_substitute_swaps_in_the_easier_variation(self):
+        easier = make_exercise("Knee Push-up", "push", reps=10)
+        self.exercise.easier_variation = easier
+        self.exercise.save()
+        session = WorkoutSession.objects.create(user=self.user, plan_day=self.training_day)
+
+        response = self.client.post(
+            reverse("workouts:substitute_exercise", args=[session.id, self.plan_exercise.id]),
+            {"reason": "too_difficult"},
+        )
+
+        self.plan_exercise.refresh_from_db()
+        self.assertRedirects(response, reverse("workouts:session_detail", args=[session.id]))
+        self.assertEqual(self.plan_exercise.exercise, easier)
+
+    def test_substitute_with_discomfort_shows_safety_warning(self):
+        easier = make_exercise("Knee Push-up", "push", reps=10)
+        self.exercise.easier_variation = easier
+        self.exercise.save()
+        session = WorkoutSession.objects.create(user=self.user, plan_day=self.training_day)
+
+        response = self.client.post(
+            reverse("workouts:substitute_exercise", args=[session.id, self.plan_exercise.id]),
+            {"reason": "discomfort"},
+            follow=True,
+        )
+        self.assertContains(response, "stop and consider getting guidance")
+
+    def test_substitute_without_easier_variation_leaves_exercise_unchanged(self):
+        session = WorkoutSession.objects.create(user=self.user, plan_day=self.training_day)
+
+        response = self.client.post(
+            reverse("workouts:substitute_exercise", args=[session.id, self.plan_exercise.id]),
+            {"reason": "preference"},
+            follow=True,
+        )
+
+        self.plan_exercise.refresh_from_db()
+        self.assertEqual(self.plan_exercise.exercise, self.exercise)
+        self.assertContains(response, "No substitute is set up")
+
+    def test_cannot_substitute_exercise_in_another_users_plan(self):
+        other = User.objects.create_user("other2", "o2@example.com", "password123!")
+        other_plan = WorkoutPlan.objects.create(
+            user=other, goal=PrimaryGoal.GENERAL_FITNESS, experience_level=ExperienceLevel.BEGINNER,
+            training_days_per_week=3, session_duration_minutes=45, is_active=True,
+        )
+        other_day = WorkoutPlanDay.objects.create(plan=other_plan, day_index=0, label="Full Body")
+        other_plan_exercise = WorkoutPlanExercise.objects.create(
+            plan_day=other_day, exercise=self.exercise, target_sets=2, target_reps=10, rest_seconds=60
+        )
+        session = WorkoutSession.objects.create(user=self.user, plan_day=self.training_day)
+
+        response = self.client.post(
+            reverse("workouts:substitute_exercise", args=[session.id, other_plan_exercise.id]),
+            {"reason": "preference"},
+        )
+        self.assertEqual(response.status_code, 404)
+
 
 class PersonalRecordsTests(TestCase):
     def setUp(self):
