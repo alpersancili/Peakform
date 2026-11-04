@@ -120,6 +120,11 @@ class WorkoutPlan(models.Model):
     session_duration_minutes = models.PositiveSmallIntegerField()
     equipment = models.JSONField(default=list, blank=True)
 
+    source_template = models.ForeignKey(
+        "ProgramTemplate", null=True, blank=True, on_delete=models.SET_NULL, related_name="plans_started"
+    )
+    source_difficulty = models.CharField(max_length=15, blank=True)
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -175,6 +180,11 @@ class WorkoutPlanExercise(models.Model):
     @property
     def target_display(self):
         if self.exercise.movement_type == MovementType.HOLD:
+            # A single long "hold" is really a practice block (e.g. 20
+            # minutes of freestanding handstand attempts), not one set -
+            # show it in minutes instead of "1 x 1200s hold".
+            if self.target_sets == 1 and self.target_hold_seconds and self.target_hold_seconds >= 60:
+                return f"{self.target_hold_seconds // 60} min practice"
             return f"{self.target_sets} x {self.target_hold_seconds}s hold"
         return f"{self.target_sets} x {self.target_reps} reps"
 
@@ -241,3 +251,80 @@ class RecoveryNote(models.Model):
 
     def __str__(self):
         return f"{self.user}: recovery on {self.date}"
+
+
+class ProgramDifficulty(models.TextChoices):
+    EASY = "easy", "Easy"
+    INTERMEDIATE = "intermediate", "Intermediate"
+    DIFFICULT = "difficult", "Difficult"
+
+
+class ProgramTemplate(models.Model):
+    """A hand-curated, named training program offered at three fixed
+    difficulty tiers (e.g. "Skill-focused" / Easy, Intermediate, Difficult).
+
+    Distinct from WorkoutPlan, which is either algorithmically generated
+    (see generation.py) or cloned from one of these templates: a template
+    is a fixed, reusable curriculum a user browses and "starts", which
+    clones it into a real WorkoutPlan so it gets the same session
+    tracking, logging, and personal records as any other plan.
+    """
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=80)
+    tagline = models.CharField(max_length=200, help_text="e.g. 'Master advanced skills'")
+    description = models.TextField(blank=True)
+    skill_rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    muscle_rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    strength_rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    athleticism_rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.name
+
+
+class ProgramTemplateDay(models.Model):
+    """One day (training or rest) within a template's difficulty tier."""
+
+    template = models.ForeignKey(ProgramTemplate, on_delete=models.CASCADE, related_name="days")
+    difficulty = models.CharField(max_length=15, choices=ProgramDifficulty.choices)
+    day_index = models.PositiveSmallIntegerField(help_text="0-6, Monday=0")
+    label = models.CharField(max_length=50)
+    is_rest_day = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["difficulty", "day_index"]
+        unique_together = ("template", "difficulty", "day_index")
+
+    def __str__(self):
+        return f"{self.template.name} ({self.difficulty}) - Day {self.day_index + 1}: {self.label}"
+
+
+class ProgramTemplateExercise(models.Model):
+    """One exercise prescription within a ProgramTemplateDay.
+
+    `prescription` is the exact display text (e.g. "6 x 8 sec" or
+    "3 x 10") so the curated program's wording is never lost to lossy
+    reinterpretation, even for odd formats like a 20-minute skill
+    practice block. `target_sets`/`target_reps`/`target_hold_seconds`
+    are the numeric breakdown used when this gets cloned into a real
+    WorkoutPlanExercise.
+    """
+
+    day = models.ForeignKey(ProgramTemplateDay, on_delete=models.CASCADE, related_name="exercises")
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT)
+    order = models.PositiveSmallIntegerField(default=0)
+    prescription = models.CharField(max_length=60)
+    target_sets = models.PositiveSmallIntegerField(default=3)
+    target_reps = models.PositiveSmallIntegerField(null=True, blank=True)
+    target_hold_seconds = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.exercise.name} ({self.prescription})"

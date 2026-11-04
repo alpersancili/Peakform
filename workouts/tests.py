@@ -8,6 +8,9 @@ from .generation import generate_plan_days, suggest_progression
 from .models import (
     Exercise,
     ExerciseLog,
+    ProgramTemplate,
+    ProgramTemplateDay,
+    ProgramTemplateExercise,
     RecoveryNote,
     SessionStatus,
     WorkoutPlan,
@@ -509,6 +512,81 @@ class ExerciseLibraryTests(TestCase):
     def test_unknown_slug_returns_404(self):
         response = self.client.get(reverse("workouts:exercise_detail", args=["not-a-real-exercise"]))
         self.assertEqual(response.status_code, 404)
+
+
+class ProgramTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.pushup = make_exercise("Push-up", "push", reps=10)
+        self.plank = make_exercise("Plank", "core", movement_type="hold", hold=30)
+
+        self.template = ProgramTemplate.objects.create(
+            slug="mixed-training", name="Mixed Training", tagline="All-round athlete",
+            skill_rating=5, muscle_rating=4, strength_rating=4, athleticism_rating=5,
+        )
+        self.training_day = ProgramTemplateDay.objects.create(
+            template=self.template, difficulty="easy", day_index=0, label="Push", is_rest_day=False
+        )
+        ProgramTemplateExercise.objects.create(
+            day=self.training_day, exercise=self.pushup, order=0, prescription="3 x 12",
+            target_sets=3, target_reps=12, target_hold_seconds=None,
+        )
+        ProgramTemplateExercise.objects.create(
+            day=self.training_day, exercise=self.plank, order=1, prescription="3 x 30 sec",
+            target_sets=3, target_reps=None, target_hold_seconds=30,
+        )
+        self.rest_day = ProgramTemplateDay.objects.create(
+            template=self.template, difficulty="easy", day_index=1, label="Rest", is_rest_day=True
+        )
+
+    def test_program_list_shows_template(self):
+        response = self.client.get(reverse("workouts:program_list"))
+        self.assertContains(response, "Mixed Training")
+
+    def test_program_detail_shows_exercises_and_prescriptions(self):
+        response = self.client.get(reverse("workouts:program_detail", args=["mixed-training", "easy"]))
+        self.assertContains(response, "Push-up")
+        self.assertContains(response, "3 x 12")
+        self.assertContains(response, "Rest")
+
+    def test_unknown_difficulty_redirects_to_list(self):
+        response = self.client.get(reverse("workouts:program_detail", args=["mixed-training", "nonsense"]))
+        self.assertRedirects(response, reverse("workouts:program_list"))
+
+    def test_starting_program_creates_active_plan_with_cloned_exercises(self):
+        response = self.client.post(reverse("workouts:program_start", args=["mixed-training", "easy"]))
+        self.assertRedirects(response, reverse("workouts:plan_overview"))
+
+        plan = WorkoutPlan.objects.get(user=self.user, is_active=True)
+        self.assertEqual(plan.source_template, self.template)
+        self.assertEqual(plan.source_difficulty, "easy")
+        self.assertEqual(plan.training_days_per_week, 1)
+
+        day = plan.days.get(day_index=0)
+        self.assertEqual(day.label, "Push")
+        exercises = list(day.exercises.order_by("order"))
+        self.assertEqual(exercises[0].exercise, self.pushup)
+        self.assertEqual(exercises[0].target_reps, 12)
+        self.assertEqual(exercises[1].exercise, self.plank)
+        self.assertEqual(exercises[1].target_hold_seconds, 30)
+
+        rest = plan.days.get(day_index=1)
+        self.assertTrue(rest.is_rest_day)
+
+    def test_starting_program_deactivates_previous_plan(self):
+        old_plan = WorkoutPlan.objects.create(
+            user=self.user, goal=PrimaryGoal.GENERAL_FITNESS, experience_level=ExperienceLevel.BEGINNER,
+            training_days_per_week=3, session_duration_minutes=45, is_active=True,
+        )
+        self.client.post(reverse("workouts:program_start", args=["mixed-training", "easy"]))
+        old_plan.refresh_from_db()
+        self.assertFalse(old_plan.is_active)
+
+    def test_starting_program_requires_post(self):
+        response = self.client.get(reverse("workouts:program_start", args=["mixed-training", "easy"]))
+        self.assertRedirects(response, reverse("workouts:program_detail", args=["mixed-training", "easy"]))
+        self.assertFalse(WorkoutPlan.objects.filter(user=self.user).exists())
 
 
 class RecoveryNoteTests(TestCase):

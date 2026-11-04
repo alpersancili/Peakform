@@ -3,6 +3,9 @@ from django.contrib import admin
 from .models import (
     Exercise,
     ExerciseLog,
+    ProgramTemplate,
+    ProgramTemplateDay,
+    ProgramTemplateExercise,
     RecoveryNote,
     WorkoutPlan,
     WorkoutPlanDay,
@@ -50,3 +53,21 @@ class ExerciseLogAdmin(admin.ModelAdmin):
 @admin.register(RecoveryNote)
 class RecoveryNoteAdmin(admin.ModelAdmin):
     list_display = ("user", "date", "sleep_quality", "soreness", "fatigue")
+
+
+class ProgramTemplateDayInline(admin.TabularInline):
+    model = ProgramTemplateDay
+    extra = 0
+
+
+@admin.register(ProgramTemplate)
+class ProgramTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "skill_rating", "muscle_rating", "strength_rating", "athleticism_rating")
+    prepopulated_fields = {"slug": ("name",)}
+    inlines = [ProgramTemplateDayInline]
+
+
+@admin.register(ProgramTemplateExercise)
+class ProgramTemplateExerciseAdmin(admin.ModelAdmin):
+    list_display = ("day", "exercise", "prescription")
+    list_filter = ("day__difficulty",)

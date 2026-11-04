@@ -15,5 +15,8 @@ urlpatterns = [
     path("records/", views.personal_records, name="personal_records"),
     path("exercises/", views.exercise_library, name="exercise_library"),
     path("exercises/<slug:slug>/", views.exercise_detail, name="exercise_detail"),
+    path("programs/", views.program_list, name="program_list"),
+    path("programs/<slug:slug>/<str:difficulty>/", views.program_detail, name="program_detail"),
+    path("programs/<slug:slug>/<str:difficulty>/start/", views.program_start, name="program_start"),
     path("recovery/", views.recovery_note_add, name="recovery_note_add"),
 ]

@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from accounts.models import Equipment, ExperienceLevel
+from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
 from motivation.badges import evaluate_badges
 from motivation.challenges import evaluate_challenges
 from motivation.xp import XP_PER_COMPLETED_WORKOUT, award_xp
@@ -16,6 +16,8 @@ from .models import (
     ExerciseLog,
     MovementCategory,
     MovementType,
+    ProgramDifficulty,
+    ProgramTemplate,
     RecoveryNote,
     SessionStatus,
     WorkoutPlan,
@@ -260,3 +262,110 @@ def exercise_detail(request, slug):
         (r for r in compute_personal_records(request.user) if r["exercise"].id == exercise.id), None
     )
     return render(request, "workouts/exercise_detail.html", {"exercise": exercise, "personal_best": personal_best})
+
+
+PROGRAM_DIFFICULTY_TO_EXPERIENCE = {
+    ProgramDifficulty.EASY: ExperienceLevel.BEGINNER,
+    ProgramDifficulty.INTERMEDIATE: ExperienceLevel.INTERMEDIATE,
+    ProgramDifficulty.DIFFICULT: ExperienceLevel.ADVANCED,
+}
+
+PROGRAM_SLUG_TO_GOAL = {
+    "skill-focused": PrimaryGoal.SKILLS,
+    "strength-hypertrophy": PrimaryGoal.MUSCLE_GAIN,
+    "mixed-training": PrimaryGoal.GENERAL_FITNESS,
+}
+
+
+@login_required
+def program_list(request):
+    templates = ProgramTemplate.objects.prefetch_related("days")
+    rows = []
+    for template in templates:
+        rows.append(
+            {
+                "template": template,
+                "ratings": [
+                    ("Skills", template.skill_rating),
+                    ("Muscle", template.muscle_rating),
+                    ("Strength", template.strength_rating),
+                    ("Athleticism", template.athleticism_rating),
+                ],
+            }
+        )
+    return render(request, "workouts/program_list.html", {"rows": rows, "difficulty_choices": ProgramDifficulty.choices})
+
+
+@login_required
+def program_detail(request, slug, difficulty):
+    template = get_object_or_404(ProgramTemplate, slug=slug)
+    if difficulty not in {choice for choice, _ in ProgramDifficulty.choices}:
+        messages.error(request, "Unknown difficulty.")
+        return redirect("workouts:program_list")
+
+    days = (
+        template.days.filter(difficulty=difficulty)
+        .prefetch_related("exercises__exercise")
+        .order_by("day_index")
+    )
+    active_plan = _active_plan(request.user)
+    is_active_source = bool(
+        active_plan and active_plan.source_template_id == template.id and active_plan.source_difficulty == difficulty
+    )
+
+    context = {
+        "template": template,
+        "difficulty": difficulty,
+        "difficulty_label": dict(ProgramDifficulty.choices)[difficulty],
+        "difficulty_choices": ProgramDifficulty.choices,
+        "days": days,
+        "is_active_source": is_active_source,
+    }
+    return render(request, "workouts/program_detail.html", context)
+
+
+@login_required
+def program_start(request, slug, difficulty):
+    template = get_object_or_404(ProgramTemplate, slug=slug)
+    if difficulty not in {choice for choice, _ in ProgramDifficulty.choices}:
+        messages.error(request, "Unknown difficulty.")
+        return redirect("workouts:program_list")
+
+    if request.method != "POST":
+        return redirect("workouts:program_detail", slug=slug, difficulty=difficulty)
+
+    source_days = (
+        template.days.filter(difficulty=difficulty).prefetch_related("exercises__exercise").order_by("day_index")
+    )
+    training_days = sum(1 for day in source_days if not day.is_rest_day)
+
+    WorkoutPlan.objects.filter(user=request.user, is_active=True).update(is_active=False)
+    plan = WorkoutPlan.objects.create(
+        user=request.user,
+        goal=PROGRAM_SLUG_TO_GOAL.get(template.slug, PrimaryGoal.GENERAL_FITNESS),
+        experience_level=PROGRAM_DIFFICULTY_TO_EXPERIENCE[difficulty],
+        training_days_per_week=training_days,
+        session_duration_minutes=60,
+        equipment=request.user.profile.equipment,
+        source_template=template,
+        source_difficulty=difficulty,
+        is_active=True,
+    )
+    for source_day in source_days:
+        plan_day = WorkoutPlanDay.objects.create(
+            plan=plan, day_index=source_day.day_index, label=source_day.label, is_rest_day=source_day.is_rest_day
+        )
+        for source_exercise in source_day.exercises.all():
+            rest_seconds = 150 if source_exercise.exercise.movement_type == MovementType.HOLD else 120
+            WorkoutPlanExercise.objects.create(
+                plan_day=plan_day,
+                exercise=source_exercise.exercise,
+                order=source_exercise.order,
+                target_sets=source_exercise.target_sets,
+                target_reps=source_exercise.target_reps,
+                target_hold_seconds=source_exercise.target_hold_seconds,
+                rest_seconds=rest_seconds,
+            )
+
+    messages.success(request, f"Started {template.name} ({dict(ProgramDifficulty.choices)[difficulty]}).")
+    return redirect("workouts:plan_overview")

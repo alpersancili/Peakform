@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ template.name }} ({{ difficulty_label }}) &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>{{ template.name }} &middot; {{ difficulty_label }}</h1>
+      <p>{{ template.tagline }}</p>
+      <a href="{% url 'workouts:program_list' %}">&larr; All programs</a>
+    </div>
+
+    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-6);">
+      {% for value, label in difficulty_choices %}
+        <a class="btn {% if value == difficulty %}btn--primary{% else %}btn--ghost{% endif %} btn--sm"
+           href="{% url 'workouts:program_detail' template.slug value %}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    {% for day in days %}
+      <div class="card" style="margin-bottom: var(--space-4);">
+        <h3 style="margin: 0 0 var(--space-2);">Day {{ day.day_index|add:1 }} &mdash; {{ day.label }}</h3>
+        {% if day.is_rest_day %}
+          <p class="dashboard-card__note">Rest</p>
+        {% else %}
+          <ul class="history-list">
+            {% for pe in day.exercises.all %}
+              <li class="history-item">
+                <div>
+                  <h3><a href="{% url 'workouts:exercise_detail' pe.exercise.slug %}">{{ pe.exercise.name }}</a></h3>
+                  <p class="dashboard-card__note">{{ pe.prescription }}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <form method="post" action="{% url 'workouts:program_start' template.slug difficulty %}" class="card form-card">
+      {% csrf_token %}
+      {% if is_active_source %}
+        <p class="dashboard-card__note">This is your active plan.</p>
+      {% else %}
+        <p class="dashboard-card__note">Starting this replaces your current active plan with this program.</p>
+        <button class="btn btn--primary btn--lg" type="submit">Start this program</button>
+      {% endif %}
+    </form>
+  </div>
+</section>
+{% endblock %}

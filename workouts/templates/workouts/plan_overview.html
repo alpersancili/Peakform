@@ -14,6 +14,7 @@
         {% endif %}
       </div>
       <div class="profile-header__actions">
+        <a class="btn btn--ghost" href="{% url 'workouts:program_list' %}">Programs</a>
         <a class="btn btn--ghost" href="{% url 'workouts:exercise_library' %}">Exercise library</a>
         <a class="btn btn--ghost" href="{% url 'workouts:recovery_note_add' %}">Log recovery</a>
         <a class="btn btn--ghost" href="{% url 'workouts:personal_records' %}">Records</a>
