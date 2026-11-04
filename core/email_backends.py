@@ -58,7 +58,16 @@ class ResendAPIBackend(BaseEmailBackend):
             RESEND_ENDPOINT,
             data=json.dumps(payload).encode("utf-8"),
             method="POST",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                # Cloudflare (which fronts Resend's API) blocks the default
+                # "Python-urllib/3.x" User-Agent as bot traffic (Cloudflare
+                # error 1010) - confirmed in production, where this request
+                # got a clean 403 from Cloudflare before it ever reached
+                # Resend. A normal-looking User-Agent avoids that filter.
+                "User-Agent": "Peakform-Django/1.0 (+https://peakform-994i.onrender.com)",
+            },
         )
         try:
             with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
