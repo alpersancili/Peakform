@@ -74,6 +74,92 @@
 })();
 
 /**
+ * Active workout mode: shows one exercise card at a time instead of the
+ * whole session as a long scroll, with Previous/Next and a progress bar.
+ * Without JS the page still works (every card just stays visible), so
+ * this only enables itself once it can actually drive the navigation.
+ * Position is kept in sessionStorage (keyed by session id) because
+ * logging a set submits a normal form and reloads the page - without
+ * that, every log would bounce the user back to exercise one.
+ */
+(function () {
+  const root = document.querySelector("[data-workout-progress]");
+  if (!root) return;
+
+  const steps = Array.from(document.querySelectorAll(".workout-exercise[data-workout-step]"));
+  if (!steps.length) return;
+
+  const container = root.parentElement;
+  const fill = root.querySelector("[data-workout-progress-fill]");
+  const label = root.querySelector("[data-workout-progress-label]");
+  const nextPreview = root.querySelector("[data-workout-next-preview]");
+  const prevButton = root.querySelector("[data-workout-prev]");
+  const nextButton = root.querySelector("[data-workout-next]");
+  const storageKey = "peakform-workout-step-" + root.dataset.sessionId;
+
+  function isDone(step) {
+    return step.dataset.workoutDone === "1";
+  }
+
+  function firstIncompleteIndex() {
+    const index = steps.findIndex(function (step) { return !isDone(step); });
+    return index === -1 ? steps.length - 1 : index;
+  }
+
+  function readStoredIndex() {
+    let stored = null;
+    try {
+      stored = window.sessionStorage.getItem(storageKey);
+    } catch (e) {
+      stored = null;
+    }
+    const index = stored === null ? NaN : parseInt(stored, 10);
+    if (!Number.isFinite(index) || index < 0 || index >= steps.length) return null;
+    return index;
+  }
+
+  function storeIndex(index) {
+    try {
+      window.sessionStorage.setItem(storageKey, String(index));
+    } catch (e) {
+      // sessionStorage unavailable (private mode, etc.) - navigation still works, just doesn't persist.
+    }
+  }
+
+  let current = readStoredIndex();
+  if (current === null || isDone(steps[current])) current = firstIncompleteIndex();
+
+  function render() {
+    steps.forEach(function (step, index) {
+      step.classList.toggle("is-active", index === current);
+    });
+    label.textContent = "Exercise " + (current + 1) + " of " + steps.length;
+    fill.style.width = Math.round(((current + 1) / steps.length) * 100) + "%";
+    const next = steps[current + 1];
+    nextPreview.textContent = next ? "Next: " + next.dataset.workoutName : "Last exercise — finish up below once you're done.";
+    prevButton.disabled = current === 0;
+    nextButton.disabled = current === steps.length - 1;
+    storeIndex(current);
+  }
+
+  prevButton.addEventListener("click", function () {
+    if (current > 0) {
+      current -= 1;
+      render();
+    }
+  });
+  nextButton.addEventListener("click", function () {
+    if (current < steps.length - 1) {
+      current += 1;
+      render();
+    }
+  });
+
+  container.classList.add("workout-focus-enabled");
+  render();
+})();
+
+/**
  * Equipment checkboxes on the plan-generator form: "No equipment" is
  * exclusive with every other option, since picking a specific piece of
  * equipment while also claiming to have none is contradictory input the

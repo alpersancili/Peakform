@@ -9,9 +9,21 @@
       <p>{{ session.date }} &middot; {{ session.get_status_display }}</p>
     </div>
 
+    {% if session.status == "in_progress" and exercise_rows %}
+      <div class="workout-progress" data-workout-progress data-session-id="{{ session.id }}" data-step-count="{{ exercise_rows|length }}">
+        <div class="workout-progress__bar progress-track"><span data-workout-progress-fill></span></div>
+        <div class="workout-progress__row">
+          <button class="btn btn--ghost btn--sm" type="button" data-workout-prev>&larr; Previous</button>
+          <span class="workout-progress__label" data-workout-progress-label>Exercise 1 of {{ exercise_rows|length }}</span>
+          <button class="btn btn--ghost btn--sm" type="button" data-workout-next>Next &rarr;</button>
+        </div>
+        <p class="workout-progress__next" data-workout-next-preview></p>
+      </div>
+    {% endif %}
+
     {% for row in exercise_rows %}
       {% with pe=row.plan_exercise ex=row.plan_exercise.exercise logs=row.logs %}
-      <div class="card workout-exercise {% if logs|length >= pe.target_sets %}workout-exercise--done{% endif %}">
+      <div class="card workout-exercise {% if logs|length >= pe.target_sets %}workout-exercise--done{% endif %}" data-workout-step="{{ forloop.counter0 }}" data-workout-done="{% if logs|length >= pe.target_sets %}1{% else %}0{% endif %}" data-workout-name="{{ ex.name }}">
         <div class="workout-exercise__header">
           <div>
             <span class="exercise-category exercise-category--{{ ex.category }}">{{ ex.get_category_display }}</span>
