@@ -84,6 +84,37 @@ class ProgressOverviewViewTests(TestCase):
         todays_point = next(d for d in response.context["water_history"] if d["date"] == today)
         self.assertEqual(todays_point["amount"], 500)
 
+    def test_strength_trend_defaults_to_eight_weeks_with_no_data(self):
+        response = self.client.get(reverse("progress:overview"))
+        self.assertEqual(response.context["strength_trend_weeks"], 8)
+        self.assertEqual(len(response.context["strength_trend"]["chart"]), 8)
+        self.assertIsNone(response.context["strength_trend"]["trend_note"])
+        self.assertContains(response, "Complete a few workouts to see your training volume trend here.")
+
+    def test_strength_trend_counts_completed_sets_only(self):
+        from workouts.models import Exercise, ExerciseLog
+
+        exercise = Exercise.objects.create(
+            name="Push-up", category="push", difficulty_level="beginner", instructions="Go."
+        )
+        completed = WorkoutSession.objects.create(user=self.user, status=SessionStatus.COMPLETED)
+        ExerciseLog.objects.create(session=completed, exercise=exercise, set_number=1, reps=10)
+        in_progress = WorkoutSession.objects.create(user=self.user, status=SessionStatus.IN_PROGRESS)
+        ExerciseLog.objects.create(session=in_progress, exercise=exercise, set_number=1, reps=10)
+
+        response = self.client.get(reverse("progress:overview"))
+        current_week = next(row for row in response.context["strength_trend"]["chart"] if row["is_current"])
+        self.assertEqual(current_week["sets"], 1)
+
+    def test_strength_trend_respects_weeks_query_param(self):
+        response = self.client.get(reverse("progress:overview"), {"weeks": "26"})
+        self.assertEqual(response.context["strength_trend_weeks"], 26)
+        self.assertEqual(len(response.context["strength_trend"]["chart"]), 26)
+
+    def test_strength_trend_rejects_invalid_weeks_value(self):
+        response = self.client.get(reverse("progress:overview"), {"weeks": "999"})
+        self.assertEqual(response.context["strength_trend_weeks"], 8)
+
 
 class ProgressEntryDeleteTests(TestCase):
     def setUp(self):

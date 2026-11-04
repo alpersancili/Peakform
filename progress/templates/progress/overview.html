@@ -22,6 +22,30 @@
       </div>
 
       <div class="card dashboard-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
+          <h2 class="dashboard-card__title">Training volume</h2>
+          <div style="display: flex; gap: var(--space-2);">
+            {% for choice in strength_trend_week_choices %}
+              <a class="btn btn--sm {% if choice == strength_trend_weeks %}btn--primary{% else %}btn--ghost{% endif %}" href="?weeks={{ choice }}">{{ choice }}w</a>
+            {% endfor %}
+          </div>
+        </div>
+        {% if strength_trend.trend_note %}
+          <div class="weekly-chart{% if strength_trend_weeks > 12 %} weekly-chart--dense{% endif %}">
+            {% for point in strength_trend.chart %}
+              <div class="weekly-chart__bar-wrap">
+                <div class="weekly-chart__bar {% if point.is_current %}weekly-chart__bar--today{% endif %}" style="height: {{ point.pct }}%;" title="{{ point.sets }} sets logged, week of {{ point.week_start|date:'N j' }}"></div>
+                {% if strength_trend_weeks <= 12 %}<span>{{ point.week_start|date:"n/j" }}</span>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          <p class="dashboard-card__note">{{ strength_trend.trend_note }}</p>
+        {% else %}
+          <p class="dashboard-card__note">Complete a few workouts to see your training volume trend here.</p>
+        {% endif %}
+      </div>
+
+      <div class="card dashboard-card">
         <h2 class="dashboard-card__title">Calorie consistency (last 7 days)</h2>
         {% if calorie_consistency.logged_days %}
           <p class="tracker-value">{{ calorie_consistency.on_target_days }} <small>/ {{ calorie_consistency.window_days }} days on target</small></p>

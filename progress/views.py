@@ -9,13 +9,63 @@ from django.utils import timezone
 from motivation.streaks import calculate_current_streak, weekly_workout_progress
 from nutrition.calculations import calculate_daily_targets
 from nutrition.models import MealEntry, StepLog, WaterLog
-from workouts.models import SessionStatus, WorkoutSession
+from workouts.models import ExerciseLog, SessionStatus, WorkoutSession
 
 from .forms import ProgressEntryForm, ProgressPhotoForm
 from .models import ProgressEntry, ProgressPhoto
 
 HISTORY_DAYS = 7
 CONSISTENCY_TOLERANCE = 0.15  # within 15% of the calorie target counts as "on target"
+STRENGTH_TREND_WEEK_CHOICES = [8, 12, 26]  # roughly two months, three months, six months
+DEFAULT_STRENGTH_TREND_WEEKS = 8
+
+
+def _strength_trend(user, today, weeks):
+    """Completed sets per week, oldest-first, for a simple training-volume trend.
+
+    Grouping by week (rather than per exercise) avoids needing the user to
+    pick which exercise to chart, while still showing whether training
+    volume is climbing, flat, or dropping off.
+    """
+    current_week_start = today - timedelta(days=today.weekday())
+    first_week_start = current_week_start - timedelta(weeks=weeks - 1)
+
+    session_dates = ExerciseLog.objects.filter(
+        session__user=user, session__status=SessionStatus.COMPLETED, session__date__gte=first_week_start
+    ).values_list("session__date", flat=True)
+
+    sets_by_week_start = {}
+    for date in session_dates:
+        week_start = date - timedelta(days=date.weekday())
+        sets_by_week_start[week_start] = sets_by_week_start.get(week_start, 0) + 1
+
+    highest = max(sets_by_week_start.values(), default=0)
+    chart = []
+    for offset in range(weeks):
+        week_start = first_week_start + timedelta(weeks=offset)
+        sets = sets_by_week_start.get(week_start, 0)
+        chart.append(
+            {
+                "week_start": week_start,
+                "sets": sets,
+                "pct": round(sets / highest * 100) if highest else 0,
+                "is_current": week_start == current_week_start,
+            }
+        )
+
+    trend_note = None
+    if weeks >= 4 and highest:
+        half = weeks // 2
+        earlier_avg = sum(row["sets"] for row in chart[:half]) / half
+        recent_avg = sum(row["sets"] for row in chart[half:]) / (weeks - half)
+        if recent_avg > earlier_avg * 1.1:
+            trend_note = "Trending up — your training volume has been climbing."
+        elif recent_avg < earlier_avg * 0.9:
+            trend_note = "Trending down — your training volume has eased off recently."
+        else:
+            trend_note = "Holding steady over this period."
+
+    return {"chart": chart, "trend_note": trend_note}
 
 
 def _weight_history_chart(entries):
@@ -93,6 +143,13 @@ def overview(request):
 
     entries = list(ProgressEntry.objects.filter(user=request.user)[:30])
 
+    try:
+        strength_trend_weeks = int(request.GET.get("weeks", DEFAULT_STRENGTH_TREND_WEEKS))
+    except ValueError:
+        strength_trend_weeks = DEFAULT_STRENGTH_TREND_WEEKS
+    if strength_trend_weeks not in STRENGTH_TREND_WEEK_CHOICES:
+        strength_trend_weeks = DEFAULT_STRENGTH_TREND_WEEKS
+
     weight_change = None
     if len(entries) >= 2:
         weight_change = round(entries[0].weight_kg - entries[-1].weight_kg, 1)
@@ -119,6 +176,9 @@ def overview(request):
             request.user, today, WaterLog, "amount_ml", "logged_at__date", profile.water_goal_ml
         ),
         "step_history": _activity_history(request.user, today, StepLog, "step_count", "date", profile.step_goal),
+        "strength_trend": _strength_trend(request.user, today, strength_trend_weeks),
+        "strength_trend_weeks": strength_trend_weeks,
+        "strength_trend_week_choices": STRENGTH_TREND_WEEK_CHOICES,
         "recent_photos": ProgressPhoto.objects.filter(user=request.user)[:4],
         "photo_count": ProgressPhoto.objects.filter(user=request.user).count(),
     }
