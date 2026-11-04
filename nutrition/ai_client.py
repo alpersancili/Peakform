@@ -26,6 +26,12 @@ MAX_DESCRIPTION_LENGTH = 1000
 MAX_ITEM_CALORIES = 5000
 MAX_ITEM_QUANTITY = 100
 REQUEST_TIMEOUT_SECONDS = 15
+# A photo request's body is much bigger (base64-encoded inline image data,
+# up to ~11MB for an 8MB photo) and Gemini's vision processing is slower
+# than a text-only completion, so it gets a longer budget. Must stay under
+# gunicorn's worker timeout (see Procfile) or the worker gets killed before
+# this timeout even fires, turning a clean error message into a 502.
+VISION_REQUEST_TIMEOUT_SECONDS = 45
 MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024
 ALLOWED_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
@@ -103,7 +109,7 @@ class ParsedFoodItem:
     fat_g: float
 
 
-def _post_to_gemini(parts, *, api_key, model):
+def _post_to_gemini(parts, *, api_key, model, timeout=REQUEST_TIMEOUT_SECONDS):
     """Issue the HTTP request to Gemini for the given content parts."""
     url = GEMINI_ENDPOINT_TEMPLATE.format(model=model, key=api_key)
     body = json.dumps(
@@ -119,7 +125,7 @@ def _post_to_gemini(parts, *, api_key, model):
         url, data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
     try:
-        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise GeminiRequestError(f"Gemini API returned HTTP {exc.code}.") from exc
@@ -140,7 +146,7 @@ def _call_gemini_vision(prompt, image_bytes, mime_type, *, api_key, model):
         {"text": prompt},
         {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
     ]
-    return _post_to_gemini(parts, api_key=api_key, model=model)
+    return _post_to_gemini(parts, api_key=api_key, model=model, timeout=VISION_REQUEST_TIMEOUT_SECONDS)
 
 
 def _extract_text(envelope):
