@@ -35,12 +35,26 @@
             {% if day.is_rest_day %}
               <p class="plan-day__rest">Rest day. Recovery is part of the plan.</p>
             {% else %}
+              <p class="plan-day__meta">
+                {{ plan.get_experience_level_display }} &middot; ~{{ day.estimated_minutes }} min &middot;
+                {{ day.exercise_count }} exercise{{ day.exercise_count|pluralize }} &middot; {{ day.total_sets }} working sets
+              </p>
+              {% if day.focus_areas %}<p class="dashboard-card__note">Focus: {{ day.focus_areas|join:", " }}</p>{% endif %}
+              {% if day.target_muscles %}<p class="dashboard-card__note">Trains: {{ day.target_muscles|join:", " }}</p>{% endif %}
+              <p class="dashboard-card__note">
+                Equipment: {% if day.equipment_needed %}{{ day.equipment_needed|join:", " }}{% else %}None &mdash; bodyweight only{% endif %}
+              </p>
+
               <ul class="plan-day__exercises">
                 {% for pe in day.exercises.all %}
                   <li>{{ pe.exercise.name }} <span>{{ pe.target_display }}</span></li>
                 {% endfor %}
               </ul>
-              <p class="dashboard-card__note">~{{ day.estimated_minutes }} min</p>
+
+              <p class="plan-day__why">
+                Part of your {{ plan.get_goal_display|lower }} plan{% if day.focus_areas %} &mdash; today's {{ day.label|lower }} session builds {{ day.focus_areas|join:" and "|lower }}{% endif %}.
+              </p>
+
               <form method="post" action="{% url 'workouts:session_start' day.id %}">
                 {% csrf_token %}
                 <button class="btn btn--secondary btn--block" type="submit">Start workout</button>

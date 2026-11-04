@@ -156,6 +156,46 @@ class WorkoutPlanDay(models.Model):
     def estimated_minutes(self):
         return sum(pe.estimated_minutes for pe in self.exercises.all())
 
+    @property
+    def exercise_count(self):
+        return len(self.exercises.all())
+
+    @property
+    def total_sets(self):
+        return sum(pe.target_sets for pe in self.exercises.all())
+
+    @property
+    def focus_areas(self):
+        """Distinct exercise categories trained this day, e.g. ['Push', 'Core']."""
+        seen = []
+        for pe in self.exercises.all():
+            label = pe.exercise.get_category_display()
+            if label not in seen:
+                seen.append(label)
+        return seen
+
+    @property
+    def target_muscles(self):
+        """Distinct muscle/skill names trained this day, in first-seen order."""
+        seen = []
+        for pe in self.exercises.all():
+            for muscle in pe.exercise.target_muscles.split(","):
+                muscle = muscle.strip()
+                if muscle and muscle not in seen:
+                    seen.append(muscle)
+        return seen
+
+    @property
+    def equipment_needed(self):
+        """Display names of equipment this day's exercises need, excluding bodyweight-only."""
+        seen = []
+        display = dict(Equipment.choices)
+        for pe in self.exercises.all():
+            for item in pe.exercise.equipment_required:
+                if item != Equipment.NONE and item not in seen:
+                    seen.append(item)
+        return [display.get(item, item) for item in seen]
+
 
 class WorkoutPlanExercise(models.Model):
     plan_day = models.ForeignKey(WorkoutPlanDay, on_delete=models.CASCADE, related_name="exercises")
