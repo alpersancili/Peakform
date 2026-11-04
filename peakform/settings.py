@@ -196,6 +196,25 @@ LOGIN_REDIRECT_URL = "nutrition:dashboard"
 LOGOUT_REDIRECT_URL = "core:landing"
 
 
+# Email (used for password reset). Works with any SMTP provider (Resend,
+# SendGrid, Mailgun, Gmail, etc. all offer SMTP relays) - set the
+# DJANGO_EMAIL_HOST* variables to use one. Without DJANGO_EMAIL_HOST set,
+# falls back to printing emails to the server log: password reset still
+# "succeeds" (Django never reveals whether an address has an account) but
+# the actual reset link only shows up in logs, not a real inbox, until
+# SMTP is configured.
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", default=True)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "Peakform <noreply@peakform.app>")
+
+
 # Third-party API keys (never hardcode; read from the environment only).
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")

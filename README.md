@@ -108,6 +108,9 @@ left unset.
 | `SUPABASE_S3_ENDPOINT_URL` | e.g. `https://<ref>.storage.supabase.co/storage/v1/s3`, from the same S3 Connection page. |
 | `SUPABASE_S3_REGION` | Your Supabase project's region, e.g. `eu-central-1`. |
 | `SUPABASE_S3_BUCKET` | Storage bucket name (default `community-images`). |
+| `DJANGO_EMAIL_HOST` | SMTP host for sending password-reset emails (works with any provider's SMTP relay — Resend, SendGrid, Mailgun, Gmail, etc.). Unset = emails print to the server log instead of sending; password reset still "works" but the link only shows up in logs. |
+| `DJANGO_EMAIL_PORT` / `DJANGO_EMAIL_HOST_USER` / `DJANGO_EMAIL_HOST_PASSWORD` / `DJANGO_EMAIL_USE_TLS` | SMTP connection details for the provider above. |
+| `DJANGO_DEFAULT_FROM_EMAIL` | From address for outgoing email (default `Peakform <noreply@peakform.app>`). |
 
 ## Running tests
 
