@@ -30,6 +30,7 @@ from .models import (
     WorkoutSession,
 )
 from .personal_records import compute_personal_records, detect_new_records
+from .previous_performance import previous_session_set_map
 
 
 def _active_plan(user):
@@ -152,15 +153,30 @@ def session_detail(request, session_id):
     for log in session.logs.select_related("exercise"):
         logs_by_exercise.setdefault(log.exercise_id, []).append(log)
 
-    exercise_rows = [
-        {"plan_exercise": pe, "logs": logs_by_exercise.get(pe.exercise_id, [])} for pe in plan_exercises
-    ]
+    exercise_rows = []
+    for pe in plan_exercises:
+        logs = logs_by_exercise.get(pe.exercise_id, [])
+        next_set_number = len(logs) + 1
+        previous_log = previous_session_set_map(request.user, pe.exercise, session.id).get(next_set_number)
 
-    return render(
-        request,
-        "workouts/session_detail.html",
-        {"session": session, "exercise_rows": exercise_rows, "set_form": SetLogForm()},
-    )
+        initial = {}
+        if previous_log:
+            if pe.exercise.movement_type == MovementType.HOLD:
+                initial["hold_seconds"] = previous_log.hold_seconds
+            else:
+                initial["reps"] = previous_log.reps
+
+        exercise_rows.append(
+            {
+                "plan_exercise": pe,
+                "logs": logs,
+                "next_set_number": next_set_number,
+                "previous_log": previous_log,
+                "set_form": SetLogForm(initial=initial),
+            }
+        )
+
+    return render(request, "workouts/session_detail.html", {"session": session, "exercise_rows": exercise_rows})
 
 
 @login_required

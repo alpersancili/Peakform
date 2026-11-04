@@ -68,17 +68,23 @@
           <span class="rest-timer__recommended">Recommended: {{ pe.rest_seconds }}s</span>
         </div>
 
+        {% if row.previous_log %}
+          <p class="dashboard-card__note">
+            Last time (set {{ row.next_set_number }}): {% if row.previous_log.hold_seconds %}{{ row.previous_log.hold_seconds }}s hold{% else %}{{ row.previous_log.reps }} reps{% endif %}{% if row.previous_log.effort_rpe %} &middot; RPE {{ row.previous_log.effort_rpe }}{% endif %}
+          </p>
+        {% endif %}
+
         <form method="post" action="{% url 'workouts:log_set' session.id ex.id %}" class="set-log-form">
           {% csrf_token %}
           <div class="set-log-form__fields">
             {% if ex.movement_type == "hold" %}
-              <label>Hold (s) {{ set_form.hold_seconds }}</label>
+              <label>Hold (s) {{ row.set_form.hold_seconds }}</label>
             {% else %}
-              <label>Reps {{ set_form.reps }}</label>
+              <label>Reps {{ row.set_form.reps }}</label>
             {% endif %}
-            <label>RPE {{ set_form.effort_rpe }}</label>
+            <label>RPE {{ row.set_form.effort_rpe }}</label>
           </div>
-          <button class="btn btn--secondary" type="submit">Log set {{ logs|length|add:1 }}</button>
+          <button class="btn btn--secondary" type="submit">Log set {{ row.next_set_number }}</button>
         </form>
       </div>
       {% endwith %}
