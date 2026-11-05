@@ -154,7 +154,7 @@ EXERCISES = [
          instructions="From a tuck planche, open the tuck slightly, bringing the knees away from the chest while keeping the hips at the same height. Hold.",
          breathing="Breathe steadily; don't hold your breath.", mistakes="Letting the hips rise as the tuck opens.",
          rest=90, sets=4, reps=None, hold=10, easier="Planche Tuck", harder="Planche"),
-    dict(name="Planche", video="https://www.youtube.com/watch?v=tyS9jEF3sk0", category="skill", movement_type="hold", difficulty="advanced",
+    dict(name="Planche", video="https://www.youtube.com/watch?v=OmKfROtB45Q", category="skill", movement_type="hold", difficulty="advanced",
          muscles="Shoulders, core", equipment=[], goals=["skills", "strength"],
          instructions="From an advanced tuck, slowly extend your legs out straight (or to a straddle first) while keeping your whole body off the ground and your arms locked straight. Hold.",
          breathing="Breathe steadily; don't hold your breath.", mistakes="Bending the elbows or letting the hips drop as the legs extend.",
