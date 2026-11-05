@@ -299,7 +299,7 @@ def session_complete(request, session_id):
         messages.success(request, "Workout complete. Nice work!")
         for exercise, value in detect_new_records(request.user, session):
             unit = "s hold" if exercise.movement_type == MovementType.HOLD else " reps"
-            messages.success(request, f"New PR: {exercise.name} — {value}{unit}!")
+            messages.success(request, f"New best: {exercise.name} — {value}{unit}!")
         for note in progression_notes:
             messages.info(request, note)
         for badge in evaluate_badges(request.user):

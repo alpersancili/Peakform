@@ -17,7 +17,7 @@
         <div><dt>Sets completed</dt><dd>{{ total_sets }}</dd></div>
         {% if total_reps %}<div><dt>Total reps</dt><dd>{{ total_reps }}</dd></div>{% endif %}
         {% if total_hold_seconds %}<div><dt>Total hold time</dt><dd>{{ total_hold_seconds }}s</dd></div>{% endif %}
-        {% if average_rpe %}<div><dt>Average RPE</dt><dd>{{ average_rpe }}</dd></div>{% endif %}
+        {% if average_rpe %}<div><dt>Average effort</dt><dd>{{ average_rpe }}/10</dd></div>{% endif %}
       </dl>
     </div>
 
@@ -29,13 +29,13 @@
             <div>
               <h3>{{ row.exercise.name }}</h3>
               {% if row.is_new_record %}
-                <p class="dashboard-card__note">New PR: {{ row.record_value }}{% if row.exercise.movement_type == "hold" %}s hold{% else %} reps{% endif %}</p>
+                <p class="dashboard-card__note">New best: {{ row.record_value }}{% if row.exercise.movement_type == "hold" %}s hold{% else %} reps{% endif %}</p>
               {% endif %}
             </div>
           </div>
           <ul class="set-log">
             {% for log in row.logs %}
-              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; RPE {{ log.effort_rpe }}{% endif %}</li>
+              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; Effort {{ log.effort_rpe }}/10{% endif %}</li>
             {% endfor %}
           </ul>
           {% if row.total_reps and row.previous_reps %}

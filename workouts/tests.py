@@ -581,7 +581,7 @@ class PersonalRecordsTests(TestCase):
         response = self.client.post(
             reverse("workouts:session_complete", args=[session.id]), {"notes": ""}, follow=True
         )
-        self.assertContains(response, "New PR: Push-up")
+        self.assertContains(response, "New best: Push-up")
 
     def test_records_page_lists_personal_bests(self):
         self._completed_session({"exercise": self.pushup, "reps": 12})

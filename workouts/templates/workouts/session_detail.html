@@ -74,7 +74,7 @@
         {% if logs %}
           <ul class="set-log">
             {% for log in logs %}
-              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; RPE {{ log.effort_rpe }}{% endif %}</li>
+              <li>Set {{ log.set_number }}: {% if log.reps %}{{ log.reps }} reps{% endif %}{% if log.hold_seconds %}{{ log.hold_seconds }}s hold{% endif %}{% if log.effort_rpe %} &middot; Effort {{ log.effort_rpe }}/10{% endif %}</li>
             {% endfor %}
           </ul>
         {% endif %}
@@ -91,7 +91,7 @@
 
         {% if row.previous_log %}
           <p class="dashboard-card__note">
-            Last time (set {{ row.next_set_number }}): {% if row.previous_log.hold_seconds %}{{ row.previous_log.hold_seconds }}s hold{% else %}{{ row.previous_log.reps }} reps{% endif %}{% if row.previous_log.effort_rpe %} &middot; RPE {{ row.previous_log.effort_rpe }}{% endif %}
+            Last time (set {{ row.next_set_number }}): {% if row.previous_log.hold_seconds %}{{ row.previous_log.hold_seconds }}s hold{% else %}{{ row.previous_log.reps }} reps{% endif %}{% if row.previous_log.effort_rpe %} &middot; Effort {{ row.previous_log.effort_rpe }}/10{% endif %}
           </p>
         {% endif %}
 
@@ -103,9 +103,9 @@
             {% else %}
               <label>Reps {{ row.set_form.reps }}</label>
             {% endif %}
-            <label>RPE {{ row.set_form.effort_rpe }}</label>
+            <label>Effort (1-10) {{ row.set_form.effort_rpe }}</label>
           </div>
-          <button class="btn btn--secondary" type="submit">Log set {{ row.next_set_number }}</button>
+          <button class="btn btn--secondary" type="submit">Save set {{ row.next_set_number }}</button>
         </form>
       </div>
       {% endwith %}
