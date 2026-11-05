@@ -27,7 +27,7 @@ coach grounded in the user's real logged data (profile, nutrition
 targets vs. today's intake, active workout plan and history, streak,
 weight trend) rather than invented numbers - it asks for missing
 information instead of guessing, avoids diagnosing medical conditions,
-and never promises specific results or timelines. 300 automated tests
+and never promises specific results or timelines. 305 automated tests
 cover the deterministic calculation logic, generation algorithms, and
 server-side permission checks across every app.
 
@@ -52,12 +52,13 @@ weekly challenges layered on top of the MVP's badges and streaks.
 Easy/Intermediate/Difficult tiers, browsable day-by-day and
 one-click-startable into a fully tracked plan.
 
-**Exercise library:** 81 exercises (including full dips, hanging leg
+**Exercise library:** 91 exercises (including full dips, hanging leg
 raises, complete planche/front lever/one-arm-handstand progressions,
 dedicated conditioning and mobility pools, and more), each with a real
 YouTube demonstration URL where one could be confidently sourced
 (individually verified, never guessed/fabricated) or detailed written
-instructions where one couldn't. Workout generation scales sets/reps/
+instructions where one couldn't — every mobility/flexibility exercise
+now has one. Workout generation scales sets/reps/
 rest to the user's actual goal and varies the weekly split structure
 itself by goal (Skills gets dedicated Push/Pull days; Endurance and
 Flexibility get genuine Conditioning/Mobility sessions, not a
@@ -76,7 +77,9 @@ ability to swap out an exercise mid-session (with a safety note if the
 reason is discomfort); named skill progression trees (handstand,
 muscle-up, planche, front lever, pistol squat, L-sit, and more) built
 from the exercise library's own progression chains, with a way to mark
-a step achieved; a mobility & recovery library grouped into routines
+a step achieved, plus user-defined custom skill goals (a free-text
+target broken into the user's own steps, for anything not in the
+curated trees); a mobility & recovery library grouped into routines
 by target area; a pre-session readiness check-in (sleep/soreness/
 fatigue) with a plain-language, non-diagnostic suggestion; a
 training-volume trend chart with 8/12/26-week filters; and
@@ -157,7 +160,7 @@ left unset.
 python manage.py test
 ```
 
-300 tests cover the deterministic nutrition/workout-generation/streak
+305 tests cover the deterministic nutrition/workout-generation/streak
 calculations (no AI involved — these are pure functions with their own
 unit tests), form validation, and — for every view that lets a user
 modify data — that another user genuinely cannot (edit/delete/moderate

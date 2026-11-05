@@ -429,6 +429,43 @@ class SkillMilestone(models.Model):
         return f"{self.user}: {self.exercise.name}"
 
 
+class CustomSkillGoal(models.Model):
+    """A user-defined skill target with their own self-written steps.
+
+    Separate from the curated SKILL_TREES (which only cover exercises
+    already in the library): this is free text, for a goal that doesn't
+    map onto the exercise library at all (e.g. "touch my toes" or a
+    sport-specific move).
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="custom_skill_goals")
+    title = models.CharField(max_length=120)
+    created_at = models.DateTimeField(auto_now_add=True)
+    achieved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user}: {self.title}"
+
+
+class CustomSkillStep(models.Model):
+    """A single step toward a CustomSkillGoal, in the user's own words."""
+
+    goal = models.ForeignKey(CustomSkillGoal, on_delete=models.CASCADE, related_name="steps")
+    description = models.CharField(max_length=200)
+    order = models.PositiveSmallIntegerField(default=0)
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.description
+
+
 class CommunityRoutine(models.Model):
     """A routine published by a user for other users to browse, start, and rate.
 

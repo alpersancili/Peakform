@@ -22,6 +22,7 @@ from .forms import (
     CommunityRoutineExerciseForm,
     CommunityRoutineForm,
     CommunityRoutineRatingForm,
+    CustomSkillGoalForm,
     PlanGenerateForm,
     RecoveryNoteForm,
     SetLogForm,
@@ -31,6 +32,8 @@ from .models import (
     CommunityRoutine,
     CommunityRoutineExercise,
     CommunityRoutineRating,
+    CustomSkillGoal,
+    CustomSkillStep,
     Exercise,
     ExerciseLog,
     MovementCategory,
@@ -434,9 +437,61 @@ def skill_tree_overview(request):
     achieved_ids = set(
         SkillMilestone.objects.filter(user=request.user).values_list("exercise_id", flat=True)
     )
+    custom_goals = CustomSkillGoal.objects.filter(user=request.user).prefetch_related("steps")
     return render(
-        request, "workouts/skill_tree_overview.html", {"trees": skill_trees(achieved_ids)}
+        request,
+        "workouts/skill_tree_overview.html",
+        {
+            "trees": skill_trees(achieved_ids),
+            "custom_goals": custom_goals,
+            "custom_goal_form": CustomSkillGoalForm(),
+        },
     )
+
+
+@login_required
+def custom_skill_goal_create(request):
+    if request.method == "POST":
+        form = CustomSkillGoalForm(request.POST)
+        if form.is_valid():
+            goal = form.save(commit=False)
+            goal.user = request.user
+            goal.save()
+            CustomSkillStep.objects.bulk_create(
+                CustomSkillStep(goal=goal, description=description, order=index)
+                for index, description in enumerate(form.cleaned_data["steps"])
+            )
+            messages.success(request, f"Added your goal: {goal.title}.")
+        else:
+            messages.error(request, "Couldn't save that goal — add a title and at least one step.")
+    return redirect("workouts:skill_tree_overview")
+
+
+@login_required
+def custom_skill_goal_delete(request, goal_id):
+    goal = get_object_or_404(CustomSkillGoal, id=goal_id, user=request.user)
+    if request.method == "POST":
+        goal.delete()
+    return redirect("workouts:skill_tree_overview")
+
+
+@login_required
+def custom_skill_step_toggle(request, step_id):
+    step = get_object_or_404(CustomSkillStep, id=step_id, goal__user=request.user)
+    if request.method == "POST":
+        step.completed = not step.completed
+        step.completed_at = timezone.now() if step.completed else None
+        step.save(update_fields=["completed", "completed_at"])
+
+        goal = step.goal
+        all_done = not goal.steps.filter(completed=False).exists()
+        if all_done and not goal.achieved_at:
+            goal.achieved_at = timezone.now()
+            goal.save(update_fields=["achieved_at"])
+        elif not all_done and goal.achieved_at:
+            goal.achieved_at = None
+            goal.save(update_fields=["achieved_at"])
+    return redirect("workouts:skill_tree_overview")
 
 
 @login_required

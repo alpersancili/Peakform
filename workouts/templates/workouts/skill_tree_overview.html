@@ -10,6 +10,52 @@
       <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
     </div>
 
+    <div class="card" style="margin-bottom: var(--space-6);">
+      <h2 class="dashboard-card__title">Your own goals</h2>
+      <p class="dashboard-card__note">Not in the library? Set your own target and break it into steps.</p>
+
+      {% for goal in custom_goals %}
+        <div style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
+          <div class="workout-exercise__header">
+            <div>
+              <h3>{{ goal.title }}</h3>
+              {% if goal.achieved_at %}
+                <p class="dashboard-card__note">Achieved {{ goal.achieved_at|date:"M j, Y" }}</p>
+              {% endif %}
+            </div>
+            <form method="post" action="{% url 'workouts:custom_skill_goal_delete' goal.id %}">
+              {% csrf_token %}
+              <button class="btn btn--ghost btn--sm" type="submit">Remove</button>
+            </form>
+          </div>
+          <ul class="skill-tree">
+            {% for step in goal.steps.all %}
+              <li class="skill-tree__step {% if step.completed %}skill-tree__step--achieved{% endif %}">
+                <div>{{ step.description }}</div>
+                <form method="post" action="{% url 'workouts:custom_skill_step_toggle' step.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn--sm {% if step.completed %}btn--ghost{% else %}btn--secondary{% endif %}" type="submit">
+                    {% if step.completed %}Unmark{% else %}Mark done{% endif %}
+                  </button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+
+      <details style="margin-top: var(--space-4);">
+        <summary>+ Add a goal</summary>
+        <form method="post" action="{% url 'workouts:custom_skill_goal_create' %}" class="form-card" style="margin-top: var(--space-3);">
+          {% csrf_token %}
+          <label>Goal {{ custom_goal_form.title }}</label>
+          <label>Steps {{ custom_goal_form.steps }}</label>
+          <p class="dashboard-card__note">{{ custom_goal_form.steps.help_text }}</p>
+          <button class="btn btn--secondary" type="submit">Save goal</button>
+        </form>
+      </details>
+    </div>
+
     {% for tree in trees %}
       <div class="card" style="margin-bottom: var(--space-4);">
         <h2 class="dashboard-card__title">{{ tree.label }}</h2>

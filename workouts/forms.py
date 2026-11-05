@@ -2,7 +2,14 @@ from django import forms
 
 from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
 
-from .models import CommunityRoutine, CommunityRoutineExercise, CommunityRoutineRating, ExerciseLog, RecoveryNote
+from .models import (
+    CommunityRoutine,
+    CommunityRoutineExercise,
+    CommunityRoutineRating,
+    CustomSkillGoal,
+    ExerciseLog,
+    RecoveryNote,
+)
 
 
 class PlanGenerateForm(forms.Form):
@@ -44,6 +51,25 @@ class RecoveryNoteForm(forms.ModelForm):
             "fatigue": forms.Select(choices=[("", "—")] + [(i, i) for i in range(1, 6)]),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
+
+
+class CustomSkillGoalForm(forms.ModelForm):
+    steps = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "One step per line, in order..."}),
+        help_text="One step per line, in the order you'll tackle them.",
+    )
+
+    class Meta:
+        model = CustomSkillGoal
+        fields = ["title"]
+        widgets = {"title": forms.TextInput(attrs={"placeholder": "e.g. Touch my toes"})}
+
+    def clean_steps(self):
+        lines = [line.strip() for line in self.cleaned_data["steps"].splitlines()]
+        steps = [line for line in lines if line]
+        if not steps:
+            raise forms.ValidationError("Add at least one step.")
+        return steps
 
 
 class CommunityRoutineForm(forms.ModelForm):

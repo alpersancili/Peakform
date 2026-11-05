@@ -18,6 +18,8 @@ from .models import (
     CommunityRoutine,
     CommunityRoutineExercise,
     CommunityRoutineRating,
+    CustomSkillGoal,
+    CustomSkillStep,
     Exercise,
     ExerciseLog,
     ProgramTemplate,
@@ -746,6 +748,54 @@ class SkillTreeTests(TestCase):
         response = self.client.get(reverse("workouts:skill_tree_overview"))
         tree = next(t for t in response.context["trees"] if t["key"] == "l_sit")
         self.assertFalse(tree["steps"][0]["achieved"])
+
+
+class CustomSkillGoalTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("goalsetter", "g@example.com", "password123!")
+        self.client.login(username="goalsetter", password="password123!")
+
+    def test_create_goal_with_steps(self):
+        response = self.client.post(
+            reverse("workouts:custom_skill_goal_create"),
+            {"title": "Touch my toes", "steps": "Stretch daily\nPractice fold\nHold 30s"},
+            follow=True,
+        )
+        goal = CustomSkillGoal.objects.get(user=self.user, title="Touch my toes")
+        self.assertEqual(list(goal.steps.values_list("description", flat=True)), ["Stretch daily", "Practice fold", "Hold 30s"])
+        self.assertContains(response, "Added your goal")
+
+    def test_blank_steps_rejected(self):
+        self.client.post(reverse("workouts:custom_skill_goal_create"), {"title": "Empty goal", "steps": "   \n  "})
+        self.assertFalse(CustomSkillGoal.objects.filter(title="Empty goal").exists())
+
+    def test_toggling_all_steps_marks_goal_achieved(self):
+        goal = CustomSkillGoal.objects.create(user=self.user, title="Goal")
+        step = CustomSkillStep.objects.create(goal=goal, description="Only step", order=0)
+
+        self.client.post(reverse("workouts:custom_skill_step_toggle", args=[step.id]))
+        goal.refresh_from_db()
+        self.assertIsNotNone(goal.achieved_at)
+
+        self.client.post(reverse("workouts:custom_skill_step_toggle", args=[step.id]))
+        goal.refresh_from_db()
+        self.assertIsNone(goal.achieved_at)
+
+    def test_cannot_toggle_another_users_step(self):
+        other = User.objects.create_user("other5", "o5@example.com", "password123!")
+        goal = CustomSkillGoal.objects.create(user=other, title="Other's goal")
+        step = CustomSkillStep.objects.create(goal=goal, description="Step", order=0)
+
+        response = self.client.post(reverse("workouts:custom_skill_step_toggle", args=[step.id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_cannot_delete_another_users_goal(self):
+        other = User.objects.create_user("other6", "o6@example.com", "password123!")
+        goal = CustomSkillGoal.objects.create(user=other, title="Other's goal")
+
+        response = self.client.post(reverse("workouts:custom_skill_goal_delete", args=[goal.id]))
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(CustomSkillGoal.objects.filter(id=goal.id).exists())
 
 
 class CommunityRoutineTests(TestCase):
