@@ -185,13 +185,20 @@ management).
    during the build step (WhiteNoise then serves hashed, cached assets
    directly from the Django process — no separate static host needed).
 5. **Release/start command:** the included [`Procfile`](Procfile) runs
-   migrations and starts gunicorn: `python manage.py migrate --noinput
-   && gunicorn peakform.wsgi --log-file -`. Railway and Render both read
+   migrations, seeds reference data, and starts gunicorn: `python
+   manage.py migrate --noinput && python manage.py seed_foods && python
+   manage.py seed_exercises && python manage.py seed_programs && python
+   manage.py seed_badges && python manage.py seed_challenges && gunicorn
+   peakform.wsgi --log-file -`. Running the seed commands on every boot
+   (not just the first deploy) matters on hosts without shell/SSH access
+   (e.g. Render's free tier) - there'd otherwise be no way to run them
+   after the first deploy; they're all idempotent, so re-running them is
+   a no-op once the data is already there. Railway and Render both read
    a `Procfile` automatically; for Render specifically, set the build
    command to `pip install -r requirements.txt && python manage.py
-   collectstatic --noinput` and the start command to `gunicorn
-   peakform.wsgi --log-file -` (Render runs migrations as a separate
-   step rather than via the Procfile).
+   collectstatic --noinput` and the start command to the same migrate +
+   seed + gunicorn chain above (Render can run this as its start command
+   directly, or as a separate "release" step if your plan supports one).
 6. **Media storage:** local disk (`MEDIA_ROOT`) by default, which isn't
    persistent across redeploys on most platform-as-a-service hosts. Set
    the `SUPABASE_S3_*` variables (see above) to store uploads in
@@ -199,11 +206,13 @@ management).
    straight to Supabase's public object URL (the bucket is public and
    read-only for anonymous requests; all writes require the S3
    credentials, which only the server holds).
-7. Seed reference data once, after the first deploy:
-   `python manage.py seed_foods && python manage.py seed_exercises &&
-   python manage.py seed_programs && python manage.py seed_badges &&
-   python manage.py seed_challenges` (idempotent — safe to re-run;
-   `seed_programs` must run after `seed_exercises`, since its curated
+7. Reference data seeds itself on every boot via the Procfile (step 5)
+   - no manual step needed, including on hosts with no shell access.
+   If you're not using the Procfile for some reason, run the same seed
+   commands manually at least once: `python manage.py seed_foods &&
+   python manage.py seed_exercises && python manage.py seed_programs &&
+   python manage.py seed_badges && python manage.py seed_challenges`
+   (`seed_programs` must run after `seed_exercises`, since its curated
    programs reference exercises by name).
 
 Run `python manage.py check --deploy` with your production environment

@@ -1,1 +1,1 @@
-web: python manage.py migrate --noinput && gunicorn peakform.wsgi --timeout 60 --log-file -
+web: python manage.py migrate --noinput && python manage.py seed_foods && python manage.py seed_exercises && python manage.py seed_programs && python manage.py seed_badges && python manage.py seed_challenges && gunicorn peakform.wsgi --timeout 60 --log-file -
