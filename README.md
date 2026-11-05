@@ -54,11 +54,9 @@ one-click-startable into a fully tracked plan.
 
 **Exercise library:** 91 exercises (including full dips, hanging leg
 raises, complete planche/front lever/one-arm-handstand progressions,
-dedicated conditioning and mobility pools, and more), each with a real
-YouTube demonstration URL where one could be confidently sourced
-(individually verified, never guessed/fabricated) or detailed written
-instructions where one couldn't — every mobility/flexibility exercise
-now has one. Workout generation scales sets/reps/
+dedicated conditioning and mobility pools, and more), every one of
+them individually verified against a real YouTube demonstration (never
+guessed/fabricated). Workout generation scales sets/reps/
 rest to the user's actual goal and varies the weekly split structure
 itself by goal (Skills gets dedicated Push/Pull days; Endurance and
 Flexibility get genuine Conditioning/Mobility sessions, not a
