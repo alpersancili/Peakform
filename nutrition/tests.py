@@ -167,7 +167,7 @@ class DashboardTests(TestCase):
         self.assertEqual(response.context["totals"]["calories"], 330)
 
 
-class FoodSearchAndLoggingTests(TestCase):
+class MealEntryEditTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("athlete", "athlete@example.com", "password123!")
         self.client.login(username="athlete", password="password123!")
@@ -175,41 +175,17 @@ class FoodSearchAndLoggingTests(TestCase):
             name="Oats", serving_size=40, serving_unit="g",
             calories=150, protein_g=5.3, carbs_g=27, fat_g=2.7,
         )
-        Food.objects.create(
-            name="Other user's food", serving_size=100, serving_unit="g",
-            calories=100, protein_g=1, carbs_g=1, fat_g=1,
-            created_by=User.objects.create_user("other", "other@example.com", "password123!"),
-        )
 
-    def test_search_finds_matching_food_but_not_other_users_custom_food(self):
-        response = self.client.get(reverse("nutrition:food_search"), {"q": "oat"})
-        names = [f.name for f in response.context["results"]]
-        self.assertIn("Oats", names)
-        self.assertEqual(len(names), 1)
-
-    def test_add_meal_entry_for_gram_based_food_accepts_grams_not_multiplier(self):
-        # Oats: serving_size=40g, 150 kcal per serving. Entering 80 grams
-        # should log 2x the serving (300 kcal), not literally "2 servings".
-        response = self.client.post(
-            reverse("nutrition:add_meal_entry", args=[self.food.id]),
-            {"meal_category": "breakfast", "quantity": "80"},
-        )
-        self.assertRedirects(response, reverse("nutrition:dashboard"))
-        entry = MealEntry.objects.get(user=self.user, food=self.food)
-        self.assertEqual(entry.quantity, 2)
-        self.assertEqual(entry.calories, 300)
-        self.assertEqual(entry.protein_g, 10.6)
-
-    def test_add_meal_entry_for_piece_based_food_keeps_serving_multiplier(self):
+    def test_meal_entry_edit_for_piece_based_food_keeps_serving_multiplier(self):
         egg = Food.objects.create(
             name="Egg", serving_size=1, serving_unit="piece", calories=72, protein_g=6.3, carbs_g=0.4, fat_g=4.8,
         )
-        response = self.client.post(
-            reverse("nutrition:add_meal_entry", args=[egg.id]),
+        entry = MealEntry.objects.create(user=self.user, food=egg, meal_category="breakfast", quantity=1)
+        self.client.post(
+            reverse("nutrition:meal_entry_edit", args=[entry.id]),
             {"meal_category": "breakfast", "quantity": "2"},
         )
-        self.assertRedirects(response, reverse("nutrition:dashboard"))
-        entry = MealEntry.objects.get(user=self.user, food=egg)
+        entry.refresh_from_db()
         self.assertEqual(entry.quantity, 2)
         self.assertEqual(entry.calories, 144)
 

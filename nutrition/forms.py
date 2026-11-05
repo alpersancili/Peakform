@@ -1,19 +1,6 @@
 from django import forms
 
-from .models import Food, MealCategory, MealEntry, StepLog
-
-
-class FoodSearchForm(forms.Form):
-    q = forms.CharField(label="Search foods", required=False, max_length=150)
-
-
-class CustomFoodForm(forms.ModelForm):
-    class Meta:
-        model = Food
-        fields = ["name", "brand", "serving_size", "serving_unit", "calories", "protein_g", "carbs_g", "fat_g"]
-        widgets = {
-            "serving_unit": forms.TextInput(attrs={"placeholder": "g, ml, piece..."}),
-        }
+from .models import MealCategory, MealEntry, StepLog
 
 
 class MealEntryForm(forms.ModelForm):

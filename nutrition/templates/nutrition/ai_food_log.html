@@ -11,7 +11,7 @@
 
     {% if not configured %}
       <div class="card dashboard__prompt">
-        <p>The AI assistant isn't configured on this server yet. You can still <a href="{% url 'nutrition:food_search' %}">log food by searching</a>.</p>
+        <p>The AI assistant isn't configured on this server yet. Please check back later.</p>
       </div>
     {% else %}
       <form class="card form-card" method="post" novalidate>

@@ -1,12 +1,10 @@
 from datetime import timedelta
-from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 
 from motivation.badges import evaluate_badges
@@ -16,7 +14,7 @@ from motivation.streaks import calculate_current_streak
 from .ai_client import GeminiConfigurationError, GeminiError, parse_food_description, parse_food_photo
 from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .calculations import calculate_bmi, calculate_daily_targets
-from .forms import CustomFoodForm, MealEntryForm, StepLogForm, WaterQuickAddForm
+from .forms import MealEntryForm, StepLogForm, WaterQuickAddForm
 from .models import Food, MealCategory, MealEntry, StepLog, WaterLog
 
 WEEKLY_CHART_DAYS = 7
@@ -88,61 +86,6 @@ def dashboard(request):
         "streak": calculate_current_streak(request.user, today=today),
     }
     return render(request, "nutrition/dashboard.html", context)
-
-
-@login_required
-def food_search(request):
-    query = request.GET.get("q", "").strip()
-    results = []
-    if query:
-        results = Food.objects.filter(name__icontains=query).filter(
-            Q(created_by__isnull=True) | Q(created_by=request.user)
-        )[:25]
-
-    return render(
-        request,
-        "nutrition/food_search.html",
-        {"query": query, "results": results, "meal_categories": MealCategory.choices},
-    )
-
-
-@login_required
-def add_meal_entry(request, food_id):
-    food = get_object_or_404(Food, id=food_id)
-    search_url = reverse("nutrition:food_search")
-    query = request.POST.get("q", "")
-    back_to_search = f"{search_url}?q={quote(query)}" if query else search_url
-
-    if request.method == "POST":
-        form = MealEntryForm(request.POST, food=food)
-        if form.is_valid():
-            entry = form.save(commit=False)
-            entry.user = request.user
-            entry.food = food
-            entry.save()
-            messages.success(request, f"Logged {food.name}.")
-            for badge in evaluate_badges(request.user):
-                messages.success(request, f"New badge: {badge.name}!")
-            for challenge in evaluate_challenges(request.user):
-                messages.success(request, f"Challenge complete: {challenge.name} (+{challenge.xp_reward} XP)!")
-            return redirect("nutrition:dashboard")
-        messages.error(request, "Couldn't log that food. Check the quantity and try again.")
-    return redirect(back_to_search)
-
-
-@login_required
-def custom_food_add(request):
-    if request.method == "POST":
-        form = CustomFoodForm(request.POST)
-        if form.is_valid():
-            food = form.save(commit=False)
-            food.created_by = request.user
-            food.save()
-            messages.success(request, f"Added {food.name} to your foods.")
-            return redirect(f"{reverse('nutrition:food_search')}?q={quote(food.name)}")
-    else:
-        form = CustomFoodForm()
-    return render(request, "nutrition/custom_food_form.html", {"form": form})
 
 
 @login_required
