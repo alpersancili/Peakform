@@ -25,4 +25,5 @@ urlpatterns = [
     path("programs/<slug:slug>/<str:difficulty>/", views.program_detail, name="program_detail"),
     path("programs/<slug:slug>/<str:difficulty>/start/", views.program_start, name="program_start"),
     path("recovery/", views.recovery_note_add, name="recovery_note_add"),
+    path("mobility/", views.mobility_library, name="mobility_library"),
 ]

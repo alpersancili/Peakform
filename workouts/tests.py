@@ -636,6 +636,52 @@ class ExerciseLibraryTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class MobilityLibraryTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        self.wrist_mobility = Exercise.objects.create(
+            name="Wrist Circles", category="mobility", difficulty_level=ExperienceLevel.BEGINNER,
+            target_muscles="Wrists, forearms", instructions="Circle gently.",
+        )
+        self.hip_mobility = Exercise.objects.create(
+            name="Hip Switch", category="mobility", difficulty_level=ExperienceLevel.BEGINNER,
+            target_muscles="Hips", instructions="Switch sides.",
+        )
+        # Not a mobility exercise, so it should never appear in any routine.
+        make_exercise("Push-up", "push")
+
+    def test_routines_group_by_target_area(self):
+        from .mobility import mobility_routines
+
+        routines = {r["key"]: r["exercises"] for r in mobility_routines()}
+        self.assertIn(self.wrist_mobility, routines["wrists"])
+        self.assertIn(self.hip_mobility, routines["hips"])
+        self.assertNotIn(self.hip_mobility, routines.get("wrists", []))
+
+    def test_library_page_lists_routines(self):
+        response = self.client.get(reverse("workouts:mobility_library"))
+        self.assertContains(response, "Wrist Circles")
+        self.assertContains(response, "Hip Switch")
+        self.assertNotContains(response, "Push-up")
+
+    def test_routine_for_focus_areas_matches_pull_to_shoulders(self):
+        from .mobility import routine_for_focus_areas
+
+        Exercise.objects.create(
+            name="Wall Slide", category="mobility", difficulty_level=ExperienceLevel.BEGINNER,
+            target_muscles="Shoulders", instructions="Slide up the wall.",
+        )
+        routine = routine_for_focus_areas(["Pull"])
+        self.assertEqual(routine["key"], "shoulders")
+
+    def test_routine_for_focus_areas_returns_none_without_a_match(self):
+        from .mobility import routine_for_focus_areas
+
+        Exercise.objects.all().delete()
+        self.assertIsNone(routine_for_focus_areas(["Pull"]))
+
+
 class ProgramTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("athlete", "a@example.com", "password123!")

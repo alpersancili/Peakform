@@ -29,6 +29,7 @@ from .models import (
     WorkoutPlanExercise,
     WorkoutSession,
 )
+from .mobility import mobility_routines, routine_for_focus_areas
 from .personal_records import compute_personal_records, detect_new_records
 from .previous_performance import previous_session_set_map, previous_session_totals
 
@@ -358,11 +359,16 @@ def session_summary(request, session_id):
                 (d for d in training_days if d.day_index > current_index), training_days[0]
             )
 
+    recommended_routine = None
+    if session.plan_day:
+        recommended_routine = routine_for_focus_areas(session.plan_day.focus_areas)
+
     context = {
         "session": session,
         "exercise_summaries": exercise_summaries,
         "total_sets": len(logs),
         "total_reps": total_reps or None,
+        "recommended_routine": recommended_routine,
         "total_hold_seconds": total_hold_seconds or None,
         "duration_minutes": duration_minutes,
         "average_rpe": round(sum(rpe_values) / len(rpe_values), 1) if rpe_values else None,
@@ -399,6 +405,11 @@ def recovery_note_add(request):
         form = RecoveryNoteForm(instance=note)
 
     return render(request, "workouts/recovery_note_form.html", {"form": form})
+
+
+@login_required
+def mobility_library(request):
+    return render(request, "workouts/mobility_library.html", {"routines": mobility_routines()})
 
 
 @login_required

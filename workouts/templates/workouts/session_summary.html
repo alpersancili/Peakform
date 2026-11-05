@@ -66,6 +66,19 @@
       <p class="dashboard-card__note">General fitness guidance, not medical advice.</p>
     </div>
 
+    {% if recommended_routine %}
+      <div class="card">
+        <h3 style="margin-top: 0;">Cooldown routine: {{ recommended_routine.label }}</h3>
+        <p class="dashboard-card__note">A few minutes of mobility work suited to today's session.</p>
+        <ul class="plan-day__exercises" style="margin: var(--space-3) 0;">
+          {% for exercise in recommended_routine.exercises %}
+            <li><a href="{% url 'workouts:exercise_detail' exercise.slug %}">{{ exercise.name }}</a></li>
+          {% endfor %}
+        </ul>
+        <a class="btn btn--ghost btn--sm" href="{% url 'workouts:mobility_library' %}">See all routines</a>
+      </div>
+    {% endif %}
+
     {% if next_day %}
       <div class="card">
         <h3 style="margin-top: 0;">Up next</h3>

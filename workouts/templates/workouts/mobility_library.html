@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Mobility &amp; recovery &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Mobility &amp; recovery</h1>
+      <p>Short routines by area &mdash; use them as a warm-up, a cooldown, or on a rest day. Not a substitute for injury assessment or treatment.</p>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    {% if routines %}
+      {% for routine in routines %}
+        <div class="card" style="margin-bottom: var(--space-4);">
+          <h2 class="dashboard-card__title">{{ routine.label }}</h2>
+          <ul class="plan-day__exercises" style="margin-top: var(--space-3);">
+            {% for exercise in routine.exercises %}
+              <li>
+                <a href="{% url 'workouts:exercise_detail' exercise.slug %}">{{ exercise.name }}</a>
+                <span>{{ exercise.target_muscles }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty-state">No mobility routines are set up yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
