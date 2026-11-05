@@ -24,6 +24,7 @@ from .models import (
     ProgramTemplate,
     RecoveryNote,
     SessionStatus,
+    SkillMilestone,
     WorkoutPlan,
     WorkoutPlanDay,
     WorkoutPlanExercise,
@@ -32,6 +33,7 @@ from .models import (
 from .mobility import mobility_routines, routine_for_focus_areas
 from .personal_records import compute_personal_records, detect_new_records
 from .previous_performance import previous_session_set_map, previous_session_totals
+from .skill_trees import skill_trees
 
 
 def _active_plan(user):
@@ -410,6 +412,29 @@ def recovery_note_add(request):
 @login_required
 def mobility_library(request):
     return render(request, "workouts/mobility_library.html", {"routines": mobility_routines()})
+
+
+@login_required
+def skill_tree_overview(request):
+    achieved_ids = set(
+        SkillMilestone.objects.filter(user=request.user).values_list("exercise_id", flat=True)
+    )
+    return render(
+        request, "workouts/skill_tree_overview.html", {"trees": skill_trees(achieved_ids)}
+    )
+
+
+@login_required
+def skill_milestone_toggle(request, exercise_id):
+    exercise = get_object_or_404(Exercise, id=exercise_id)
+    if request.method == "POST":
+        milestone = SkillMilestone.objects.filter(user=request.user, exercise=exercise).first()
+        if milestone:
+            milestone.delete()
+        else:
+            SkillMilestone.objects.create(user=request.user, exercise=exercise)
+            messages.success(request, f"Marked {exercise.name} as achieved.")
+    return redirect("workouts:skill_tree_overview")
 
 
 @login_required

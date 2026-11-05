@@ -406,3 +406,24 @@ class WorkoutPlanAIRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class SkillMilestone(models.Model):
+    """A specific exercise the user has marked as achieved.
+
+    Deliberately separate from ExerciseLog: mastering a skill step is
+    about control and technique, not how many times it's been logged in
+    a session, so this is a user's own call to make, not something
+    inferred from set counts.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="skill_milestones")
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="achieved_by")
+    achieved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "exercise")
+        ordering = ["-achieved_at"]
+
+    def __str__(self):
+        return f"{self.user}: {self.exercise.name}"

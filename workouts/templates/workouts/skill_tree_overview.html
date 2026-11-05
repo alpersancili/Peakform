@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Skill progressions &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Skill progressions</h1>
+      <p>Readiness for the next step depends on control and technique, not just time spent &mdash; only mark a step achieved once you can perform it with good form.</p>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    {% for tree in trees %}
+      <div class="card" style="margin-bottom: var(--space-4);">
+        <h2 class="dashboard-card__title">{{ tree.label }}</h2>
+        {% if tree.next_step %}
+          <p class="dashboard-card__note">Next milestone: {{ tree.next_step.name }}</p>
+        {% else %}
+          <p class="dashboard-card__note">All steps achieved &mdash; nice work.</p>
+        {% endif %}
+
+        <ul class="skill-tree">
+          {% for step in tree.steps %}
+            <li class="skill-tree__step {% if step.achieved %}skill-tree__step--achieved{% endif %}">
+              <div>
+                <a href="{% url 'workouts:exercise_detail' step.exercise.slug %}">{{ step.exercise.name }}</a>
+                {% if step.achieved %}<span class="dashboard-card__note">Achieved</span>{% endif %}
+              </div>
+              <form method="post" action="{% url 'workouts:skill_milestone_toggle' step.exercise.id %}">
+                {% csrf_token %}
+                <button class="btn btn--sm {% if step.achieved %}btn--ghost{% else %}btn--secondary{% endif %}" type="submit">
+                  {% if step.achieved %}Unmark{% else %}Mark achieved{% endif %}
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

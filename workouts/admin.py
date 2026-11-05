@@ -7,6 +7,7 @@ from .models import (
     ProgramTemplateDay,
     ProgramTemplateExercise,
     RecoveryNote,
+    SkillMilestone,
     WorkoutPlan,
     WorkoutPlanAIRequest,
     WorkoutPlanDay,
@@ -77,3 +78,8 @@ class ProgramTemplateExerciseAdmin(admin.ModelAdmin):
 @admin.register(WorkoutPlanAIRequest)
 class WorkoutPlanAIRequestAdmin(admin.ModelAdmin):
     list_display = ("user", "created_at")
+
+
+@admin.register(SkillMilestone)
+class SkillMilestoneAdmin(admin.ModelAdmin):
+    list_display = ("user", "exercise", "achieved_at")

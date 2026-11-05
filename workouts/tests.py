@@ -22,6 +22,7 @@ from .models import (
     ProgramTemplateExercise,
     RecoveryNote,
     SessionStatus,
+    SkillMilestone,
     WorkoutPlan,
     WorkoutPlanAIRequest,
     WorkoutPlanDay,
@@ -680,6 +681,68 @@ class MobilityLibraryTests(TestCase):
 
         Exercise.objects.all().delete()
         self.assertIsNone(routine_for_focus_areas(["Pull"]))
+
+
+class SkillTreeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("athlete", "a@example.com", "password123!")
+        self.client.login(username="athlete", password="password123!")
+        # Names chosen so slugify() matches the l_sit tree's root slug ("plank").
+        self.plank = make_exercise("Plank", "core", movement_type="hold", hold=30)
+        self.hollow_hold = make_exercise("Hollow Body Hold", "core", movement_type="hold", hold=20)
+        self.l_sit = make_exercise("L-sit", "core", movement_type="hold", hold=10)
+        self.plank.harder_variation = self.hollow_hold
+        self.plank.save()
+        self.hollow_hold.harder_variation = self.l_sit
+        self.hollow_hold.save()
+
+    def test_chain_follows_harder_variation_links(self):
+        from .skill_trees import skill_trees
+
+        tree = next(t for t in skill_trees() if t["key"] == "l_sit")
+        self.assertEqual([s["exercise"] for s in tree["steps"]], [self.plank, self.hollow_hold, self.l_sit])
+
+    def test_next_step_is_first_unachieved(self):
+        from .skill_trees import skill_trees
+
+        tree = next(t for t in skill_trees({self.plank.id}) if t["key"] == "l_sit")
+        self.assertTrue(tree["steps"][0]["achieved"])
+        self.assertFalse(tree["steps"][1]["achieved"])
+        self.assertEqual(tree["next_step"], self.hollow_hold)
+
+    def test_no_next_step_when_all_achieved(self):
+        from .skill_trees import skill_trees
+
+        all_ids = {self.plank.id, self.hollow_hold.id, self.l_sit.id}
+        tree = next(t for t in skill_trees(all_ids) if t["key"] == "l_sit")
+        self.assertIsNone(tree["next_step"])
+
+    def test_tree_missing_without_a_seeded_root(self):
+        from .skill_trees import skill_trees
+
+        self.plank.delete()
+        self.assertFalse(any(t["key"] == "l_sit" for t in skill_trees()))
+
+    def test_overview_page_shows_tree(self):
+        response = self.client.get(reverse("workouts:skill_tree_overview"))
+        self.assertContains(response, "Plank")
+        self.assertContains(response, "L-sit")
+
+    def test_toggle_marks_then_unmarks_milestone(self):
+        url = reverse("workouts:skill_milestone_toggle", args=[self.plank.id])
+        self.client.post(url)
+        self.assertTrue(SkillMilestone.objects.filter(user=self.user, exercise=self.plank).exists())
+
+        self.client.post(url)
+        self.assertFalse(SkillMilestone.objects.filter(user=self.user, exercise=self.plank).exists())
+
+    def test_cannot_see_another_users_milestones(self):
+        other = User.objects.create_user("other3", "o3@example.com", "password123!")
+        SkillMilestone.objects.create(user=other, exercise=self.plank)
+
+        response = self.client.get(reverse("workouts:skill_tree_overview"))
+        tree = next(t for t in response.context["trees"] if t["key"] == "l_sit")
+        self.assertFalse(tree["steps"][0]["achieved"])
 
 
 class ProgramTests(TestCase):
