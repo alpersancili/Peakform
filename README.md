@@ -27,7 +27,7 @@ coach grounded in the user's real logged data (profile, nutrition
 targets vs. today's intake, active workout plan and history, streak,
 weight trend) rather than invented numbers - it asks for missing
 information instead of guessing, avoids diagnosing medical conditions,
-and never promises specific results or timelines. 269 automated tests
+and never promises specific results or timelines. 300 automated tests
 cover the deterministic calculation logic, generation algorithms, and
 server-side permission checks across every app.
 
@@ -50,9 +50,7 @@ weekly challenges layered on top of the MVP's badges and streaks.
 **Structured programs:** three hand-curated, named training programs
 (Skill-focused, Strength & Hypertrophy, Mixed Training), each at
 Easy/Intermediate/Difficult tiers, browsable day-by-day and
-one-click-startable into a fully tracked plan - plus a meal planner for
-scheduling food ahead of the diary and logging it as eaten with one
-click.
+one-click-startable into a fully tracked plan.
 
 **Exercise library:** 81 exercises (including full dips, hanging leg
 raises, complete planche/front lever/one-arm-handstand progressions,
@@ -67,13 +65,30 @@ relabeled strength split), spreads training days across the week
 instead of clustering them, and sequences skill work first in a
 session while fresh.
 
+**The workout experience:** a focused, one-exercise-at-a-time active
+workout mode with a progress bar and auto-resume past completed
+exercises; set logging pre-filled from the matching set in your last
+session of that exercise; a per-day overview showing difficulty,
+equipment, muscle groups, and working-set count before you start; a
+workout completion summary with PR callouts, a volume comparison
+against your last session, and a recommended cooldown routine; the
+ability to swap out an exercise mid-session (with a safety note if the
+reason is discomfort); named skill progression trees (handstand,
+muscle-up, planche, front lever, pistol squat, L-sit, and more) built
+from the exercise library's own progression chains, with a way to mark
+a step achieved; a mobility & recovery library grouped into routines
+by target area; a pre-session readiness check-in (sleep/soreness/
+fatigue) with a plain-language, non-diagnostic suggestion; a
+training-volume trend chart with 8/12/26-week filters; and
+user-published community routines that others can browse, start, rate,
+and report, moderated through the same system as community posts.
+
 **Not yet built:** self-service password reset (removed after
 shipping it, since the email provider's free tier can't deliver to
-real users without a verified domain), calisthenics skill roadmaps as
-their own guided feature (the curated programs and personal records
-cover much of the same ground), automated recovery analysis from
-logged sleep/soreness trends (manual `RecoveryNote` logging exists
-today), and device integrations.
+real users without a verified domain), a drag-to-reorder weekly
+calendar, multi-day trend analysis of logged recovery data (today's
+check-in gives a same-day suggestion, not a trend over time), training
+partner matching, and wearable/device integrations.
 
 Seed reference data after migrating:
 
@@ -142,7 +157,7 @@ left unset.
 python manage.py test
 ```
 
-139 tests cover the deterministic nutrition/workout-generation/streak
+300 tests cover the deterministic nutrition/workout-generation/streak
 calculations (no AI involved — these are pure functions with their own
 unit tests), form validation, and — for every view that lets a user
 modify data — that another user genuinely cannot (edit/delete/moderate
