@@ -1,0 +1,20 @@
+name: Keep Render app awake
+
+# Render's free tier spins the app down after ~15 minutes of
+# inactivity, so the first visitor after a quiet spell eats a ~50s
+# cold start. Pinging every 10 minutes keeps it warm. GitHub's
+# scheduler isn't guaranteed to run exactly on time (especially on
+# low-activity repos), so this isn't a 100% guarantee, but it covers
+# the common case.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Peakform
+        run: curl --fail --silent --show-error --max-time 60 https://peakform-994i.onrender.com/ -o /dev/null
