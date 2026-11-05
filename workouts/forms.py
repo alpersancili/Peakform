@@ -2,7 +2,7 @@ from django import forms
 
 from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
 
-from .models import ExerciseLog, RecoveryNote
+from .models import CommunityRoutine, CommunityRoutineExercise, CommunityRoutineRating, ExerciseLog, RecoveryNote
 
 
 class PlanGenerateForm(forms.Form):
@@ -44,3 +44,38 @@ class RecoveryNoteForm(forms.ModelForm):
             "fatigue": forms.Select(choices=[("", "—")] + [(i, i) for i in range(1, 6)]),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
+
+
+class CommunityRoutineForm(forms.ModelForm):
+    goal = forms.ChoiceField(choices=[("", "Any goal")] + list(PrimaryGoal.choices), required=False)
+    equipment = forms.MultipleChoiceField(
+        choices=Equipment.choices, widget=forms.CheckboxSelectMultiple, required=False
+    )
+
+    class Meta:
+        model = CommunityRoutine
+        fields = ["name", "level", "goal", "equipment", "instructions", "safety_notes"]
+        widgets = {
+            "instructions": forms.Textarea(attrs={"rows": 4, "placeholder": "Ordering, tempo, rest between exercises..."}),
+            "safety_notes": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Injury risks, who should avoid this, form cues to watch (optional)"}
+            ),
+        }
+
+
+class CommunityRoutineExerciseForm(forms.ModelForm):
+    class Meta:
+        model = CommunityRoutineExercise
+        fields = ["exercise", "target_sets", "target_reps", "target_hold_seconds"]
+        widgets = {
+            "target_sets": forms.NumberInput(attrs={"min": 1}),
+            "target_reps": forms.NumberInput(attrs={"min": 1}),
+            "target_hold_seconds": forms.NumberInput(attrs={"min": 1}),
+        }
+
+
+class CommunityRoutineRatingForm(forms.ModelForm):
+    class Meta:
+        model = CommunityRoutineRating
+        fields = ["stars"]
+        widgets = {"stars": forms.Select(choices=[(i, f"{i} star{'s' if i != 1 else ''}") for i in range(1, 6)])}

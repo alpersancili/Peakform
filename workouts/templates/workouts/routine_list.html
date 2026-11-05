@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Community routines &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Community routines</h1>
+      <p>Routines published by other users. Not reviewed by Peakform staff before posting &mdash; use your judgment, and report anything that looks unsafe or wrong.</p>
+      <a href="{% url 'workouts:plan_overview' %}">&larr; Back to plan</a>
+    </div>
+
+    <div class="profile-header__actions" style="margin-bottom: var(--space-6);">
+      <a class="btn btn--primary" href="{% url 'workouts:routine_create' %}">Publish a routine</a>
+    </div>
+
+    <form method="get" class="search-bar" style="margin-bottom: var(--space-6);">
+      <select name="level">
+        <option value="">Any level</option>
+        {% for value, label in level_choices %}
+          <option value="{{ value }}" {% if value == level %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="goal">
+        <option value="">Any goal</option>
+        {% for value, label in goal_choices %}
+          <option value="{{ value }}" {% if value == goal %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn--secondary" type="submit">Filter</button>
+    </form>
+
+    {% if routines %}
+      {% for routine in routines %}
+        <div class="card" style="margin-bottom: var(--space-4);">
+          <h2 class="dashboard-card__title" style="margin-bottom: 0;">
+            <a href="{% url 'workouts:routine_detail' routine.id %}">{{ routine.name }}</a>
+          </h2>
+          <p class="dashboard-card__note">
+            By {{ routine.creator.username }} &middot; {{ routine.get_level_display }}
+            {% if routine.goal %}&middot; {{ routine.get_goal_display }}{% endif %}
+            {% if routine.average_rating %}&middot; {{ routine.average_rating }}/5 ({{ routine.rating_count }} rating{{ routine.rating_count|pluralize }}){% else %}&middot; Not yet rated{% endif %}
+          </p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty-state">No routines match these filters yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

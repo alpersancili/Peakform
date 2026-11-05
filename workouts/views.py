@@ -1,11 +1,16 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
+from community.forms import ReportForm
+from community.models import Report
 from motivation.badges import evaluate_badges
 from motivation.challenges import evaluate_challenges
 from motivation.xp import XP_PER_COMPLETED_WORKOUT, award_xp
@@ -13,9 +18,19 @@ from motivation.xp import XP_PER_COMPLETED_WORKOUT, award_xp
 from .ai_client import WorkoutAIError, generate_plan_with_ai
 from .ai_rate_limit import RateLimitExceeded as WorkoutAIRateLimitExceeded
 from .ai_rate_limit import record_attempt_or_raise as workout_ai_record_attempt_or_raise
-from .forms import PlanGenerateForm, RecoveryNoteForm, SetLogForm
+from .forms import (
+    CommunityRoutineExerciseForm,
+    CommunityRoutineForm,
+    CommunityRoutineRatingForm,
+    PlanGenerateForm,
+    RecoveryNoteForm,
+    SetLogForm,
+)
 from .generation import generate_plan_days, suggest_progression
 from .models import (
+    CommunityRoutine,
+    CommunityRoutineExercise,
+    CommunityRoutineRating,
     Exercise,
     ExerciseLog,
     MovementCategory,
@@ -624,3 +639,171 @@ def program_start(request, slug, difficulty):
 
     messages.success(request, f"Started {template.name} ({dict(ProgramDifficulty.choices)[difficulty]}).")
     return redirect("workouts:plan_overview")
+
+
+ROUTINE_REPORT_DAILY_LIMIT = 20
+
+
+@login_required
+def routine_list(request):
+    routines = (
+        CommunityRoutine.objects.filter(is_removed=False)
+        .select_related("creator")
+        .prefetch_related("ratings")
+    )
+    level = request.GET.get("level", "")
+    goal = request.GET.get("goal", "")
+    if level in {choice for choice, _ in ExperienceLevel.choices}:
+        routines = routines.filter(level=level)
+    if goal in {choice for choice, _ in PrimaryGoal.choices}:
+        routines = routines.filter(goal=goal)
+
+    context = {
+        "routines": routines,
+        "level": level,
+        "goal": goal,
+        "level_choices": ExperienceLevel.choices,
+        "goal_choices": PrimaryGoal.choices,
+    }
+    return render(request, "workouts/routine_list.html", context)
+
+
+@login_required
+def routine_create(request):
+    if request.method == "POST":
+        form = CommunityRoutineForm(request.POST)
+        if form.is_valid():
+            routine = form.save(commit=False)
+            routine.creator = request.user
+            routine.save()
+            messages.success(request, "Routine created — now add exercises to it below.")
+            return redirect("workouts:routine_detail", routine_id=routine.id)
+    else:
+        form = CommunityRoutineForm()
+    return render(request, "workouts/routine_form.html", {"form": form})
+
+
+@login_required
+def routine_detail(request, routine_id):
+    routine = get_object_or_404(
+        CommunityRoutine.objects.prefetch_related("exercises__exercise", "ratings"),
+        id=routine_id,
+        is_removed=False,
+    )
+    is_creator = routine.creator_id == request.user.id
+    user_rating = routine.ratings.filter(user=request.user).first()
+
+    context = {
+        "routine": routine,
+        "is_creator": is_creator,
+        "exercise_form": CommunityRoutineExerciseForm() if is_creator else None,
+        "rating_form": CommunityRoutineRatingForm(instance=user_rating),
+        "user_rating": user_rating,
+        "report_form": ReportForm(),
+    }
+    return render(request, "workouts/routine_detail.html", context)
+
+
+@login_required
+def routine_exercise_add(request, routine_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id, creator=request.user)
+    if request.method == "POST":
+        form = CommunityRoutineExerciseForm(request.POST)
+        if form.is_valid():
+            routine_exercise = form.save(commit=False)
+            routine_exercise.routine = routine
+            routine_exercise.order = routine.exercises.count()
+            routine_exercise.save()
+            messages.success(request, f"Added {routine_exercise.exercise.name}.")
+        else:
+            messages.error(request, "Couldn't add that exercise. Check sets and reps/hold.")
+    return redirect("workouts:routine_detail", routine_id=routine.id)
+
+
+@login_required
+def routine_exercise_remove(request, routine_id, routine_exercise_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id, creator=request.user)
+    if request.method == "POST":
+        CommunityRoutineExercise.objects.filter(id=routine_exercise_id, routine=routine).delete()
+    return redirect("workouts:routine_detail", routine_id=routine.id)
+
+
+@login_required
+def routine_start(request, routine_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id, is_removed=False)
+    if request.method != "POST":
+        return redirect("workouts:routine_detail", routine_id=routine.id)
+
+    WorkoutPlan.objects.filter(user=request.user, is_active=True).update(is_active=False)
+    plan = WorkoutPlan.objects.create(
+        user=request.user,
+        goal=routine.goal or PrimaryGoal.GENERAL_FITNESS,
+        experience_level=routine.level,
+        training_days_per_week=1,
+        session_duration_minutes=60,
+        equipment=routine.equipment,
+        is_active=True,
+    )
+    plan_day = WorkoutPlanDay.objects.create(
+        plan=plan, day_index=timezone.localdate().weekday(), label=routine.name, is_rest_day=False
+    )
+    for routine_exercise in routine.exercises.select_related("exercise"):
+        WorkoutPlanExercise.objects.create(
+            plan_day=plan_day,
+            exercise=routine_exercise.exercise,
+            order=routine_exercise.order,
+            target_sets=routine_exercise.target_sets,
+            target_reps=routine_exercise.target_reps,
+            target_hold_seconds=routine_exercise.target_hold_seconds,
+            rest_seconds=routine_exercise.exercise.default_rest_seconds,
+        )
+
+    messages.success(request, f"Started {routine.name} as your active plan.")
+    return redirect("workouts:plan_overview")
+
+
+@login_required
+def routine_rate(request, routine_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id, is_removed=False)
+    if request.method == "POST":
+        form = CommunityRoutineRatingForm(request.POST)
+        if form.is_valid():
+            CommunityRoutineRating.objects.update_or_create(
+                routine=routine, user=request.user, defaults={"stars": form.cleaned_data["stars"]}
+            )
+            messages.success(request, "Thanks for rating this routine.")
+    return redirect("workouts:routine_detail", routine_id=routine.id)
+
+
+@login_required
+def routine_report(request, routine_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id)
+    if request.method == "POST":
+        recent_reports = Report.objects.filter(
+            reporter=request.user, created_at__gte=timezone.now() - timedelta(days=1)
+        )
+        if recent_reports.count() >= ROUTINE_REPORT_DAILY_LIMIT:
+            messages.error(request, "You've reached today's report limit. Please try again tomorrow.")
+            return redirect("workouts:routine_detail", routine_id=routine.id)
+
+        form = ReportForm(request.POST)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.content_type = ContentType.objects.get_for_model(CommunityRoutine)
+            report.object_id = routine.id
+            report.save()
+            messages.success(request, "Thanks — we'll review this.")
+        else:
+            messages.error(request, "Couldn't submit that report.")
+    return redirect("workouts:routine_detail", routine_id=routine.id)
+
+
+@login_required
+def routine_delete(request, routine_id):
+    routine = get_object_or_404(CommunityRoutine, id=routine_id, creator=request.user)
+    if request.method == "POST":
+        routine.delete()
+        messages.success(request, "Routine removed.")
+        return redirect("workouts:routine_list")
+    return redirect("workouts:routine_detail", routine_id=routine.id)

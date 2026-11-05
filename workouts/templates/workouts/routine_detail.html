@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ routine.name }} &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <a href="{% url 'workouts:routine_list' %}">&larr; All routines</a>
+    </div>
+
+    <div class="card">
+      <h1 style="margin-top: 0;">{{ routine.name }}</h1>
+      <p class="dashboard-card__note">
+        By {{ routine.creator.username }} &middot; {{ routine.get_level_display }}
+        {% if routine.goal %}&middot; {{ routine.get_goal_display }}{% endif %}
+        &middot; {{ routine.equipment_display }}
+      </p>
+      <p class="dashboard-card__note">
+        {% if routine.average_rating %}{{ routine.average_rating }}/5 from {{ routine.rating_count }} rating{{ routine.rating_count|pluralize }}{% else %}Not yet rated{% endif %}
+      </p>
+
+      <h3>Instructions</h3>
+      <p>{{ routine.instructions|linebreaksbr }}</p>
+      {% if routine.safety_notes %}
+        <h3>Safety notes</h3>
+        <p>{{ routine.safety_notes|linebreaksbr }}</p>
+      {% endif %}
+
+      <h3>Exercises</h3>
+      {% if routine.exercises.all %}
+        <ul class="plan-day__exercises">
+          {% for routine_exercise in routine.exercises.all %}
+            <li>
+              <a href="{% url 'workouts:exercise_detail' routine_exercise.exercise.slug %}">{{ routine_exercise.exercise.name }}</a>
+              <span>
+                {% if routine_exercise.target_hold_seconds %}{{ routine_exercise.target_sets }} x {{ routine_exercise.target_hold_seconds }}s hold{% else %}{{ routine_exercise.target_sets }} x {{ routine_exercise.target_reps|default:"?" }} reps{% endif %}
+              </span>
+              {% if is_creator %}
+                <form method="post" action="{% url 'workouts:routine_exercise_remove' routine.id routine_exercise.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn--ghost btn--sm" type="submit">Remove</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">No exercises added yet.</p>
+      {% endif %}
+
+      <form method="post" action="{% url 'workouts:routine_start' routine.id %}" style="margin-top: var(--space-4);">
+        {% csrf_token %}
+        <button class="btn btn--primary btn--lg" type="submit" {% if not routine.exercises.all %}disabled{% endif %}>Start this routine</button>
+      </form>
+    </div>
+
+    {% if is_creator %}
+      <div class="card" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">Add an exercise</h2>
+        <form method="post" action="{% url 'workouts:routine_exercise_add' routine.id %}" class="form-grid">
+          {% csrf_token %}
+          <div class="field">
+            <label for="{{ exercise_form.exercise.id_for_label }}">Exercise</label>
+            {{ exercise_form.exercise }}
+          </div>
+          <div class="field">
+            <label for="{{ exercise_form.target_sets.id_for_label }}">Sets</label>
+            {{ exercise_form.target_sets }}
+          </div>
+          <div class="field">
+            <label for="{{ exercise_form.target_reps.id_for_label }}">Reps</label>
+            {{ exercise_form.target_reps }}
+          </div>
+          <div class="field">
+            <label for="{{ exercise_form.target_hold_seconds.id_for_label }}">Hold (s, for timed exercises)</label>
+            {{ exercise_form.target_hold_seconds }}
+          </div>
+          <button class="btn btn--secondary" type="submit" style="align-self: end;">Add exercise</button>
+        </form>
+        <form method="post" action="{% url 'workouts:routine_delete' routine.id %}" style="margin-top: var(--space-4);">
+          {% csrf_token %}
+          <button class="btn btn--ghost btn--sm" type="submit">Delete this routine</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="card" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">Rate this routine</h2>
+        <form method="post" action="{% url 'workouts:routine_rate' routine.id %}" style="display: flex; gap: var(--space-3); align-items: end;">
+          {% csrf_token %}
+          <div class="field" style="margin-bottom: 0;">
+            <label for="{{ rating_form.stars.id_for_label }}">Stars</label>
+            {{ rating_form.stars }}
+          </div>
+          <button class="btn btn--secondary" type="submit">{% if user_rating %}Update rating{% else %}Rate{% endif %}</button>
+        </form>
+      </div>
+
+      <div class="card" id="report" style="margin-top: var(--space-6);">
+        <h2 class="dashboard-card__title">Report this routine</h2>
+        <form method="post" action="{% url 'workouts:routine_report' routine.id %}" class="report-form">
+          {% csrf_token %}
+          <div class="field">
+            <label for="{{ report_form.reason.id_for_label }}">Reason</label>
+            {{ report_form.reason }}
+          </div>
+          <div class="field">
+            <label for="{{ report_form.details.id_for_label }}">{{ report_form.details.label }}</label>
+            {{ report_form.details }}
+          </div>
+          <button class="btn btn--secondary" type="submit">Submit report</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

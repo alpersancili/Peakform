@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Publish a routine &mdash; Peakform{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container form-page">
+    <div class="section__heading" style="margin-bottom: var(--space-6); text-align: left;">
+      <h1>Publish a routine</h1>
+      <p>Share a routine other users can browse, start, and rate. You'll add exercises on the next page once this is saved.</p>
+    </div>
+
+    <form class="card form-card" method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.name.id_for_label }}">Name</label>
+          {{ form.name }}
+        </div>
+        <div class="field">
+          <label for="{{ form.level.id_for_label }}">Level</label>
+          {{ form.level }}
+        </div>
+        <div class="field">
+          <label for="{{ form.goal.id_for_label }}">Best suited for</label>
+          {{ form.goal }}
+        </div>
+      </div>
+
+      <h2 class="form-section__title">Equipment needed</h2>
+      <div class="field">
+        <ul class="checkbox-group">
+          {% for checkbox in form.equipment %}
+            <li>{{ checkbox }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="field">
+        <label for="{{ form.instructions.id_for_label }}">Instructions</label>
+        {{ form.instructions }}
+      </div>
+      <div class="field">
+        <label for="{{ form.safety_notes.id_for_label }}">Safety notes (optional)</label>
+        {{ form.safety_notes }}
+        <p class="field-help">Injury risks, who should avoid this, form cues to watch.</p>
+      </div>
+
+      <button class="btn btn--primary btn--lg" type="submit">Save and add exercises</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

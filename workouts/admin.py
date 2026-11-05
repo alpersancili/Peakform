@@ -1,6 +1,9 @@
 from django.contrib import admin
 
 from .models import (
+    CommunityRoutine,
+    CommunityRoutineExercise,
+    CommunityRoutineRating,
     Exercise,
     ExerciseLog,
     ProgramTemplate,
@@ -83,3 +86,19 @@ class WorkoutPlanAIRequestAdmin(admin.ModelAdmin):
 @admin.register(SkillMilestone)
 class SkillMilestoneAdmin(admin.ModelAdmin):
     list_display = ("user", "exercise", "achieved_at")
+
+
+@admin.register(CommunityRoutine)
+class CommunityRoutineAdmin(admin.ModelAdmin):
+    list_display = ("name", "creator", "level", "goal", "is_removed", "created_at")
+    list_filter = ("is_removed", "level")
+
+
+@admin.register(CommunityRoutineExercise)
+class CommunityRoutineExerciseAdmin(admin.ModelAdmin):
+    list_display = ("routine", "exercise", "order")
+
+
+@admin.register(CommunityRoutineRating)
+class CommunityRoutineRatingAdmin(admin.ModelAdmin):
+    list_display = ("routine", "user", "stars", "created_at")

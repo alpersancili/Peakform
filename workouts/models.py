@@ -427,3 +427,74 @@ class SkillMilestone(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.exercise.name}"
+
+
+class CommunityRoutine(models.Model):
+    """A routine published by a user for other users to browse, start, and rate.
+
+    Distinct from ProgramTemplate (an admin-curated, multi-day,
+    multi-difficulty program): this is a single, user-authored session
+    with free-text instructions and safety notes, closer to what the
+    audit asks for - "let experienced users publish a routine."
+    `is_removed` is moderation's lever (via community.Report on this
+    model, same as a community post), hiding it without deleting it.
+    """
+
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_routines")
+    name = models.CharField(max_length=120)
+    equipment = models.JSONField(default=list, blank=True)
+    level = models.CharField(max_length=20, choices=ExperienceLevel.choices)
+    goal = models.CharField(max_length=20, choices=PrimaryGoal.choices, blank=True)
+    instructions = models.TextField(help_text="How to run this routine: ordering, tempo, anything a visitor needs to know.")
+    safety_notes = models.TextField(blank=True, help_text="Injury risks, who should avoid this, form cues to watch.")
+    is_removed = models.BooleanField(default=False, help_text="Hidden by moderation; content is kept for records.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} by {self.creator}"
+
+    @property
+    def average_rating(self):
+        values = [r.stars for r in self.ratings.all()]
+        return round(sum(values) / len(values), 1) if values else None
+
+    @property
+    def rating_count(self):
+        return len(self.ratings.all())
+
+    @property
+    def equipment_display(self):
+        display = dict(Equipment.choices)
+        names = [display.get(item, item) for item in self.equipment if item != Equipment.NONE]
+        return ", ".join(names) if names else "Bodyweight only"
+
+
+class CommunityRoutineExercise(models.Model):
+    routine = models.ForeignKey(CommunityRoutine, on_delete=models.CASCADE, related_name="exercises")
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT)
+    order = models.PositiveSmallIntegerField(default=0)
+    target_sets = models.PositiveSmallIntegerField(default=3)
+    target_reps = models.PositiveSmallIntegerField(null=True, blank=True)
+    target_hold_seconds = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.exercise.name} in {self.routine.name}"
+
+
+class CommunityRoutineRating(models.Model):
+    routine = models.ForeignKey(CommunityRoutine, on_delete=models.CASCADE, related_name="ratings")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_routine_ratings")
+    stars = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("routine", "user")
+
+    def __str__(self):
+        return f"{self.user}: {self.stars} stars for {self.routine.name}"

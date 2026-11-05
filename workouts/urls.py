@@ -28,4 +28,17 @@ urlpatterns = [
     path("mobility/", views.mobility_library, name="mobility_library"),
     path("skills/", views.skill_tree_overview, name="skill_tree_overview"),
     path("skills/<int:exercise_id>/toggle/", views.skill_milestone_toggle, name="skill_milestone_toggle"),
+    path("routines/", views.routine_list, name="routine_list"),
+    path("routines/new/", views.routine_create, name="routine_create"),
+    path("routines/<int:routine_id>/", views.routine_detail, name="routine_detail"),
+    path("routines/<int:routine_id>/exercises/add/", views.routine_exercise_add, name="routine_exercise_add"),
+    path(
+        "routines/<int:routine_id>/exercises/<int:routine_exercise_id>/remove/",
+        views.routine_exercise_remove,
+        name="routine_exercise_remove",
+    ),
+    path("routines/<int:routine_id>/start/", views.routine_start, name="routine_start"),
+    path("routines/<int:routine_id>/rate/", views.routine_rate, name="routine_rate"),
+    path("routines/<int:routine_id>/report/", views.routine_report, name="routine_report"),
+    path("routines/<int:routine_id>/delete/", views.routine_delete, name="routine_delete"),
 ]

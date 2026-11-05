@@ -15,6 +15,9 @@ from .ai_client import (
 from .ai_rate_limit import RateLimitExceeded, record_attempt_or_raise, requests_remaining_today
 from .generation import generate_plan_days, suggest_progression
 from .models import (
+    CommunityRoutine,
+    CommunityRoutineExercise,
+    CommunityRoutineRating,
     Exercise,
     ExerciseLog,
     ProgramTemplate,
@@ -743,6 +746,108 @@ class SkillTreeTests(TestCase):
         response = self.client.get(reverse("workouts:skill_tree_overview"))
         tree = next(t for t in response.context["trees"] if t["key"] == "l_sit")
         self.assertFalse(tree["steps"][0]["achieved"])
+
+
+class CommunityRoutineTests(TestCase):
+    def setUp(self):
+        self.creator = User.objects.create_user("creator", "c@example.com", "password123!")
+        self.other = User.objects.create_user("other4", "o4@example.com", "password123!")
+        self.pushup = make_exercise("Push-up", "push", reps=10, equipment=[Equipment.NONE])
+        self.routine = CommunityRoutine.objects.create(
+            creator=self.creator, name="Push Day", level=ExperienceLevel.BEGINNER,
+            instructions="Do the exercises.", equipment=[Equipment.NONE],
+        )
+        CommunityRoutineExercise.objects.create(
+            routine=self.routine, exercise=self.pushup, order=0, target_sets=3, target_reps=10
+        )
+
+    def test_create_routine_requires_login(self):
+        response = self.client.get(reverse("workouts:routine_create"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_creator_can_publish_and_add_exercises(self):
+        self.client.login(username="creator", password="password123!")
+        response = self.client.post(reverse("workouts:routine_create"), {
+            "name": "Pull Day", "level": "beginner", "goal": "", "equipment": ["none"],
+            "instructions": "Pull things.", "safety_notes": "",
+        })
+        routine = CommunityRoutine.objects.get(name="Pull Day")
+        self.assertRedirects(response, reverse("workouts:routine_detail", args=[routine.id]))
+        self.assertEqual(routine.creator, self.creator)
+
+        self.client.post(reverse("workouts:routine_exercise_add", args=[routine.id]), {
+            "exercise": self.pushup.id, "target_sets": 3, "target_reps": 10,
+        })
+        self.assertEqual(routine.exercises.count(), 1)
+
+    def test_non_creator_cannot_add_exercises(self):
+        self.client.login(username="other4", password="password123!")
+        self.client.post(reverse("workouts:routine_exercise_add", args=[self.routine.id]), {
+            "exercise": self.pushup.id, "target_sets": 3, "target_reps": 10,
+        })
+        self.assertEqual(self.routine.exercises.count(), 1)
+
+    def test_creator_can_remove_an_exercise(self):
+        self.client.login(username="creator", password="password123!")
+        routine_exercise = self.routine.exercises.first()
+        self.client.post(
+            reverse("workouts:routine_exercise_remove", args=[self.routine.id, routine_exercise.id])
+        )
+        self.assertEqual(self.routine.exercises.count(), 0)
+
+    def test_starting_a_routine_clones_it_into_a_plan(self):
+        self.client.login(username="other4", password="password123!")
+        response = self.client.post(reverse("workouts:routine_start", args=[self.routine.id]))
+        self.assertRedirects(response, reverse("workouts:plan_overview"))
+
+        plan = WorkoutPlan.objects.get(user=self.other, is_active=True)
+        self.assertEqual(plan.days.count(), 1)
+        plan_day = plan.days.first()
+        self.assertEqual(plan_day.label, "Push Day")
+        self.assertEqual(plan_day.exercises.first().exercise, self.pushup)
+
+    def test_rating_is_averaged_and_upserts_per_user(self):
+        self.client.login(username="other4", password="password123!")
+        self.client.post(reverse("workouts:routine_rate", args=[self.routine.id]), {"stars": 4})
+        self.assertEqual(self.routine.average_rating, 4)
+
+        self.client.post(reverse("workouts:routine_rate", args=[self.routine.id]), {"stars": 2})
+        self.assertEqual(CommunityRoutineRating.objects.filter(routine=self.routine, user=self.other).count(), 1)
+        self.assertEqual(self.routine.average_rating, 2)
+
+    def test_report_creates_a_report_against_the_routine(self):
+        from community.models import Report
+
+        self.client.login(username="other4", password="password123!")
+        self.client.post(reverse("workouts:routine_report", args=[self.routine.id]), {
+            "reason": "misleading", "details": "Not actually beginner-friendly.",
+        })
+        report = Report.objects.get(reporter=self.other)
+        self.assertEqual(report.content_object, self.routine)
+
+    def test_creator_can_delete_own_routine(self):
+        self.client.login(username="creator", password="password123!")
+        self.client.post(reverse("workouts:routine_delete", args=[self.routine.id]))
+        self.assertFalse(CommunityRoutine.objects.filter(id=self.routine.id).exists())
+
+    def test_non_creator_cannot_delete_routine(self):
+        self.client.login(username="other4", password="password123!")
+        response = self.client.post(reverse("workouts:routine_delete", args=[self.routine.id]))
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(CommunityRoutine.objects.filter(id=self.routine.id).exists())
+
+    def test_equipment_display_shows_bodyweight_only_for_none(self):
+        self.assertEqual(self.routine.equipment_display, "Bodyweight only")
+
+    def test_list_filters_by_level(self):
+        self.client.login(username="other4", password="password123!")
+        CommunityRoutine.objects.create(
+            creator=self.creator, name="Advanced Routine", level=ExperienceLevel.ADVANCED,
+            instructions="Hard stuff.",
+        )
+        response = self.client.get(reverse("workouts:routine_list"), {"level": "advanced"})
+        self.assertContains(response, "Advanced Routine")
+        self.assertNotContains(response, "Push Day")
 
 
 class ProgramTests(TestCase):
