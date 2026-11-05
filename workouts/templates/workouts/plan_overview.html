@@ -24,6 +24,40 @@
     </div>
 
     {% if plan %}
+      {% if today_note %}
+        <div class="card" style="margin-bottom: var(--space-6);">
+          <h2 class="dashboard-card__title">Today's readiness</h2>
+          <p class="dashboard-card__note">
+            {% if today_note.sleep_quality %}Sleep {{ today_note.sleep_quality }}/5{% endif %}
+            {% if today_note.soreness %}{% if today_note.sleep_quality %} &middot; {% endif %}Soreness {{ today_note.soreness }}/5{% endif %}
+            {% if today_note.fatigue %}{% if today_note.sleep_quality or today_note.soreness %} &middot; {% endif %}Fatigue {{ today_note.fatigue }}/5{% endif %}
+          </p>
+          <p>{{ today_note.suggestion }}</p>
+          <a class="btn btn--ghost btn--sm" href="{% url 'workouts:recovery_note_add' %}">Update</a>
+        </div>
+      {% elif recovery_form %}
+        <div class="card" style="margin-bottom: var(--space-6);">
+          <h2 class="dashboard-card__title">How are you feeling today?</h2>
+          <p class="dashboard-card__note">Optional &mdash; helps gauge whether to go easier today. Not a medical assessment.</p>
+          <form method="post" action="{% url 'workouts:recovery_note_add' %}" class="form-grid">
+            {% csrf_token %}
+            <div class="field">
+              <label for="{{ recovery_form.sleep_quality.id_for_label }}">Sleep quality</label>
+              {{ recovery_form.sleep_quality }}
+            </div>
+            <div class="field">
+              <label for="{{ recovery_form.soreness.id_for_label }}">Soreness</label>
+              {{ recovery_form.soreness }}
+            </div>
+            <div class="field">
+              <label for="{{ recovery_form.fatigue.id_for_label }}">Fatigue</label>
+              {{ recovery_form.fatigue }}
+            </div>
+            <button class="btn btn--secondary" type="submit" style="align-self: end;">Save check-in</button>
+          </form>
+        </div>
+      {% endif %}
+
       <div class="plan-week">
         {% for day in plan.days.all %}
           <div class="card plan-day {% if day.day_index == today_index %}plan-day--today{% endif %} {% if day.is_rest_day %}plan-day--rest{% endif %}">

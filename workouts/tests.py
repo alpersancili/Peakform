@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Equipment, ExperienceLevel, PrimaryGoal
 
@@ -765,6 +766,49 @@ class RecoveryNoteTests(TestCase):
         self.assertEqual(RecoveryNote.objects.filter(user=self.user).count(), 1)
         note.refresh_from_db()
         self.assertEqual(note.sleep_quality, 2)
+
+    def test_suggestion_is_none_with_no_data(self):
+        note = RecoveryNote.objects.create(user=self.user)
+        self.assertFalse(note.has_readiness_data)
+        self.assertIsNone(note.suggestion)
+
+    def test_suggestion_flags_poor_sleep(self):
+        note = RecoveryNote.objects.create(user=self.user, sleep_quality=1)
+        self.assertIn("going easier", note.suggestion)
+
+    def test_suggestion_flags_high_soreness(self):
+        note = RecoveryNote.objects.create(user=self.user, soreness=5)
+        self.assertIn("going easier", note.suggestion)
+
+    def test_suggestion_flags_high_fatigue(self):
+        note = RecoveryNote.objects.create(user=self.user, fatigue=4)
+        self.assertIn("going easier", note.suggestion)
+
+    def test_suggestion_is_positive_for_good_numbers(self):
+        note = RecoveryNote.objects.create(user=self.user, sleep_quality=5, soreness=1, fatigue=1)
+        self.assertIn("Looking good", note.suggestion)
+
+    def test_plan_overview_shows_checkin_prompt_with_no_note_yet(self):
+        plan = WorkoutPlan.objects.create(
+            user=self.user, goal=PrimaryGoal.GENERAL_FITNESS, experience_level=ExperienceLevel.BEGINNER,
+            training_days_per_week=3, session_duration_minutes=45, is_active=True,
+        )
+        WorkoutPlanDay.objects.create(plan=plan, day_index=timezone.localdate().weekday(), label="Full Body")
+        response = self.client.get(reverse("workouts:plan_overview"))
+        self.assertContains(response, "How are you feeling today?")
+
+    def test_plan_overview_shows_readiness_summary_once_logged(self):
+        plan = WorkoutPlan.objects.create(
+            user=self.user, goal=PrimaryGoal.GENERAL_FITNESS, experience_level=ExperienceLevel.BEGINNER,
+            training_days_per_week=3, session_duration_minutes=45, is_active=True,
+        )
+        WorkoutPlanDay.objects.create(plan=plan, day_index=timezone.localdate().weekday(), label="Full Body")
+        RecoveryNote.objects.create(user=self.user, sleep_quality=4, soreness=1, fatigue=1)
+
+        response = self.client.get(reverse("workouts:plan_overview"))
+        self.assertContains(response, "Today's readiness")
+        self.assertContains(response, "Looking good")
+        self.assertNotContains(response, "How are you feeling today?")
 
 
 def _gemini_days_envelope(raw_days):

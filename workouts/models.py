@@ -294,6 +294,28 @@ class RecoveryNote(models.Model):
     def __str__(self):
         return f"{self.user}: recovery on {self.date}"
 
+    @property
+    def has_readiness_data(self):
+        return any(v is not None for v in (self.sleep_quality, self.soreness, self.fatigue))
+
+    @property
+    def suggestion(self):
+        """A conservative, non-diagnostic read on today's numbers, or None
+        if nothing's been logged yet. This never adjusts the plan itself -
+        it's a nudge the user can act on or ignore, not a diagnosis.
+        """
+        if not self.has_readiness_data:
+            return None
+        poor_sleep = self.sleep_quality is not None and self.sleep_quality <= 2
+        high_soreness = self.soreness is not None and self.soreness >= 4
+        high_fatigue = self.fatigue is not None and self.fatigue >= 4
+        if poor_sleep or high_soreness or high_fatigue:
+            return (
+                "Today's numbers suggest going easier — consider a lighter session, "
+                "an extra warm-up, or a rest day if you need it."
+            )
+        return "Looking good — a standard session should feel fine today."
+
 
 class ProgramDifficulty(models.TextChoices):
     EASY = "easy", "Easy"

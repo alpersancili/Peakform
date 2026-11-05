@@ -122,8 +122,16 @@ def plan_generate(request):
 @login_required
 def plan_overview(request):
     plan = _active_plan(request.user)
-    today_index = timezone.localdate().weekday()
-    return render(request, "workouts/plan_overview.html", {"plan": plan, "today_index": today_index})
+    today = timezone.localdate()
+    today_note = RecoveryNote.objects.filter(user=request.user, date=today).first()
+
+    context = {
+        "plan": plan,
+        "today_index": today.weekday(),
+        "today_note": today_note if today_note and today_note.has_readiness_data else None,
+        "recovery_form": None if today_note and today_note.has_readiness_data else RecoveryNoteForm(),
+    }
+    return render(request, "workouts/plan_overview.html", context)
 
 
 @login_required
